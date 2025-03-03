@@ -70,7 +70,7 @@ endif
 EXECUTABLEINSTALLDIR = $(INSTALLDIR)/$(EXEDIR)
 ifeq ($(INSTALLDIR),$(PWD))
   ETCINSTALLDIR = $(INSTALLDIR)/etc
-else ifneq ($(findstring $(INSTALLDIR),$(LIDARVIEWER_NAME)),)
+else ifneq ($(findstring $(LIDARVIEWER_NAME),$(INSTALLDIR)),)
   ETCINSTALLDIR = $(INSTALLDIR)/etc
 else
 	ETCINSTALLDIR = $(INSTALLDIR)/etc/$(LIDARVIEWER_NAME)
@@ -87,8 +87,11 @@ PACKAGES = MYGEOMETRY MYMATH MYIO MYMISC
 # Specify all final targets
 ########################################################################
 
+CONFIGS = 
 EXECUTABLES =
 PLUGINS =
+
+CONFIGS += Config.h
 
 EXECUTABLES += $(EXEDIR)/CalcLasRange \
                $(EXEDIR)/LidarPreprocessor \
@@ -103,7 +106,7 @@ EXECUTABLES += $(EXEDIR)/CalcLasRange \
                $(EXEDIR)/PointSetSimilarity \
                $(EXEDIR)/PrintPrimitiveFile
 
-ALL = $(EXECUTABLES) $(PLUGINS)
+ALL = $(CONFIGS) $(EXECUTABLES) $(PLUGINS)
 
 .PHONY: all
 all: $(ALL)
@@ -160,6 +163,7 @@ extraclean:
 
 .PHONY: extrasqueakyclean
 extrasqueakyclean:
+	-rm -f $(ALL)
 
 # Include basic makefile
 include $(VRUI_MAKEDIR)/BasicMakefile
