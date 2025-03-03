@@ -1,7 +1,7 @@
 ########################################################################
 # Makefile for LiDAR Viewer, a visualization and analysis application
 # for large 3D point cloud data.
-# Copyright (c) 2004-2024 Oliver Kreylos
+# Copyright (c) 2004-2025 Oliver Kreylos
 #
 # This file is part of the WhyTools Build Environment.
 # 
@@ -25,7 +25,7 @@
 # matches the default Vrui installation; if Vrui's installation
 # directory was changed during Vrui's installation, the directory below
 # must be adapted.
-VRUI_MAKEDIR := /usr/local/share/Vrui-12.0/make
+VRUI_MAKEDIR := /usr/local/share/Vrui-12.3/make
 
 # Base installation directory for LiDAR Viewer. If this is set to the
 # default of $(PWD), LiDAR Viewer does not have to be installed to be
@@ -44,9 +44,11 @@ INSTALLDIR := $(shell pwd)
 # other. The value should be identical to the major.minor version
 # number found in VERSION in the root package directory.
 VERSION = 2.19
+LIDARVIEWER_NAME = LidarViewer-$(VERSION)
 
 # Set up resource directories: */
-CONFIGDIR = etc/LidarViewer-$(VERSION)
+CONFIGDIR = etc
+CONFIGFILENAME = LidarViewer.cfg
 
 # Include definitions for the system environment and system-provided
 # packages
@@ -66,7 +68,13 @@ endif
 
 # Set installation directory structure:
 EXECUTABLEINSTALLDIR = $(INSTALLDIR)/$(EXEDIR)
-ETCINSTALLDIR = $(INSTALLDIR)/$(CONFIGDIR)
+ifeq ($(INSTALLDIR),$(PWD))
+  ETCINSTALLDIR = $(INSTALLDIR)/etc
+else ifneq ($(findstring $(INSTALLDIR),$(LIDARVIEWER_NAME)),)
+  ETCINSTALLDIR = $(INSTALLDIR)/etc
+else
+	ETCINSTALLDIR = $(INSTALLDIR)/etc/$(LIDARVIEWER_NAME)
+endif
 
 ########################################################################
 # List common packages used by all components of this project
@@ -122,9 +130,10 @@ endif
 	@touch $(DEPDIR)/Configure-Begin
 
 $(DEPDIR)/Configure-LidarViewer: $(DEPDIR)/Configure-Begin
-	@cp Config.h Config.h.temp
+	@cp Config.h.template Config.h.temp
 	@$(call CONFIG_SETVAR,Config.h.temp,USE_COLLABORATION,$(HAVE_COLLABORATION))
-	@if ! diff Config.h.temp Config.h > /dev/null ; then cp Config.h.temp Config.h ; fi
+	@$(call CONFIG_SETSTRINGVAR,Config.h.temp,LIDARVIEWER_CONFIGFILENAME,$(ETCINSTALLDIR)/$(CONFIGFILENAME))
+	@if ! diff -qN Config.h.temp Config.h > /dev/null ; then cp Config.h.temp Config.h ; fi
 	@rm Config.h.temp
 	@touch $(DEPDIR)/Configure-LidarViewer
 
@@ -178,8 +187,6 @@ LIDARPREPROCESSOR_SOURCES = SplitPoints.cpp \
 
 $(LIDARPREPROCESSOR_SOURCES:%.cpp=$(OBJDIR)/%.o): | $(DEPDIR)/config
 
-$(OBJDIR)/LidarPreprocessor.o: CFLAGS += -DLIDARVIEWER_CONFIGFILENAME='"$(ETCINSTALLDIR)/LidarViewer.cfg"'
-
 $(EXEDIR)/LidarPreprocessor: PACKAGES += MYIMAGES MYCOMM MYTHREADS
 $(EXEDIR)/LidarPreprocessor: $(LIDARPREPROCESSOR_SOURCES:%.cpp=$(OBJDIR)/%.o)
 .PHONY: LidarPreprocessor
@@ -203,8 +210,6 @@ LIDARSUBTRACTOR_SOURCES = LidarProcessOctree.cpp \
                           LidarSubtractor.cpp
 
 $(LIDARSUBTRACTOR_SOURCES:%.cpp=$(OBJDIR)/%.o): | $(DEPDIR)/config
-
-$(OBJDIR)/LidarSubtractor.o: CFLAGS += -DLIDARVIEWER_CONFIGFILENAME='"$(ETCINSTALLDIR)/LidarViewer.cfg"'
 
 $(EXEDIR)/LidarSubtractor: $(LIDARSUBTRACTOR_SOURCES:%.cpp=$(OBJDIR)/%.o)
 .PHONY: LidarSubtractor
@@ -277,8 +282,6 @@ LIDARVIEWER_SOURCES = LidarOctree.cpp \
                       LidarViewer.cpp
 
 $(LIDARVIEWER_SOURCES:%.cpp=$(OBJDIR)/%.o): | $(DEPDIR)/config
-
-$(OBJDIR)/LidarViewer.o: CFLAGS += -DLIDARVIEWER_CONFIGFILENAME='"$(ETCINSTALLDIR)/LidarViewer.cfg"'
 
 $(EXEDIR)/LidarViewer: PACKAGES += MYVRUI MYSCENEGRAPH MYGLMOTIF MYGLGEOMETRY MYGLSUPPORT MYGLWRAPPERS MYCLUSTER GL
 ifneq ($(HAVE_COLLABORATION),0)

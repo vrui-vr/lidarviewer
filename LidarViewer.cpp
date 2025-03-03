@@ -1,6 +1,6 @@
 /***********************************************************************
 LidarViewer - Viewer program for multiresolution LiDAR data.
-Copyright (c) 2005-2024 Oliver Kreylos
+Copyright (c) 2005-2025 Oliver Kreylos
 
 This file is part of the LiDAR processing and analysis package.
 
@@ -93,6 +93,7 @@ Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include <Collaboration2/Client.h>
 #endif
 
+#include "Config.h"
 #include "LidarOctree.h"
 #include "ProjectorTool.h"
 #include "PointSelectorTool.h"

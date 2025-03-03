@@ -1,7 +1,7 @@
 /***********************************************************************
 LidarSubtractor - Post-processing filter to subtract a (relatively
 small) point set from a LiDAR data set and create a new LiDAR data set.
-Copyright (c) 2009-2020 Oliver Kreylos
+Copyright (c) 2009-2025 Oliver Kreylos
 
 This file is part of the LiDAR processing and analysis package.
 
@@ -32,6 +32,7 @@ Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include <IO/OpenFile.h>
 #include <Geometry/ArrayKdTree.h>
 
+#include "Config.h"
 #include "LidarTypes.h"
 #include "LidarProcessOctree.h"
 #include "PointAccumulator.h"

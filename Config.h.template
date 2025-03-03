@@ -1,6 +1,6 @@
 /***********************************************************************
 Config - Configuration header for the LiDAR Viewer project.
-Copyright (c) 2020 Oliver Kreylos
+Copyright (c) 2020-2025 Oliver Kreylos
 
 This file is part of the LiDAR processing and analysis package.
 
@@ -22,6 +22,9 @@ Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 
 #ifndef CONFIG_INCLDUDED
 #define CONFIG_INCLDUDED
+
+/* Set the name of the LiDAR Viewer configuration file: */
+#define LIDARVIEWER_CONFIGFILENAME "./etc/LidarViewer.cfg"
 
 /* Enable or disable support for the second-generation collaboration infrastructure: */
 #define USE_COLLABORATION 1

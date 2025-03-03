@@ -1,6 +1,6 @@
 /***********************************************************************
 New version of LiDAR data preprocessor.
-Copyright (c) 2005-2024 Oliver Kreylos
+Copyright (c) 2005-2025 Oliver Kreylos
 
 This file is part of the LiDAR processing and analysis package.
 
@@ -48,6 +48,7 @@ Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include <Images/GeoTIFFMetadata.h>
 #include <Images/TIFFReader.h>
 
+#include "Config.h"
 #include "LidarTypes.h"
 #include "PointAccumulator.h"
 #include "ReadPlyFile.h"

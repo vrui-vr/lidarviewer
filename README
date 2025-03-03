@@ -1,6 +1,6 @@
 ========================================================================
 README for LiDAR Viewer version 2.19
-Copyright (c) 2004-2024 Oliver Kreylos
+Copyright (c) 2004-2025 Oliver Kreylos
 ========================================================================
 
 Overview
@@ -10,8 +10,8 @@ LiDAR Viewer is a highly interactive application for processing,
 visualization and analysis of large 3D point cloud data, such as
 produced by terrestrial or airborne LiDAR scanning. LiDAR Viewer is
 based on the Vrui software development toolkit (see
-http://idav.ucdavis.edu/~okreylos/ResDev/Vrui), and runs in a variety of
-environments ranging from laptop or desktop computers over
+https://web.cs.ucdavis.edu/~okreylos/ResDev/Vrui), and runs in a variety
+of environments ranging from laptop or desktop computers over
 semi-immersive environments such as Geowalls to fully immersive virtual
 reality environments such as CAVEs. More information about LiDAR Viewer
 can be found at http://www.keckcaves.org.
@@ -38,7 +38,7 @@ rates.
 Requirements
 ============
 
-LiDAR Viewer requires Vrui version 12.0 build 001 or newer.
+LiDAR Viewer requires Vrui version 12.3 build 001 or newer.
 To work collaboratively, LiDAR Viewer requires the Vrui Collaboration
 Infrastructure, version 10.0 or newer.
 
@@ -71,7 +71,7 @@ accounts.
 2. Change into LiDAR Viewer base directory:
    > cd LidarViewer-<version>
 
-3. If the Vrui version installed in step 0 was not 12.0, or Vrui's
+3. If the Vrui version installed in step 0 was not 12.3, or Vrui's
    installation directory was changed from the default of /usr/local,
    adapt the makefile using a text editor. Change the value of
    VRUI_MAKEDIR close to the beginning of the file as follows:
