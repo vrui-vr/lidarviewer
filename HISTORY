@@ -1,0 +1,197 @@
+LiDAR Viewer Change History
+===========================
+
+LiDAR Viewer 1.0:
+- Beginning of history file
+
+LiDAR Viewer 1.1:
+- Made minor improvements to makefile
+- Improved a bunch of stuff in LidarViewer, but forgot to write it
+  down.
+
+LiDAR Viewer 1.2:
+- Included PrintPrimitiveFile, a utility to print a saved primitives
+  file, in human-readable format.
+- Fixed long-standing bug of "disappearing nodes," was due to not
+  properly invalidating cached nodes under full cache conditions.
+- Added workaround in sphere / cylinder extraction routine to
+  accommodate the broken g++ version 4.0.1 Apple insists on shipping
+  with Xcode on Mac OS X 10.5.
+
+LiDAR Viewer 1.3:
+- Added coordinate transformation to undo data offset; measurement tools
+  now report positions properly in LiDAR data's native coordinate
+  system.
+- Bumped up Vrui requirement to version 1.0-53.
+- Added support for generic comma-separated value (-csv) input file
+  format to LidarPreprocessor.
+- Extracted primitives can be selected (by clicking on them with a
+  dragging tool).
+- Selected primitives can be deleted after extraction.
+- Selected primitives can be intersected to form new primitives. For
+  example, intersecting two planes yields a line, intersecting three
+  planes or a plane and a line yields a point, etc.
+- A LidarTool can be used to map an input device (wand, mouse, etc.)
+  onto the LiDAR point cloud by shooting a ray from the input device,
+  and placing a virtual input device at the first intersection point.
+  The virtual input device can then be combined with other tools such
+  as LocatorTools for selection, DraggingTools to select primitives, or
+  a ComeHitherNavigationTool to navigate to the intersection point.
+
+LiDAR Viewer 2.0:
+- Complete re-implementation.
+- Changed LiDAR data file format from .oct/.obin file pairs to
+  directory-based format with Index, Point, and optional additional
+  files.
+- Streamlined LiDAR preprocessor's input file formats. Now supports
+  several binary files, including the LAS exchange file format, and
+  a generic reader for space- or comma-separated ASCII files.
+- Created framework for octree-based out-of-core LiDAR data processing.
+- Created LiDAR illumination program to calculate normal vectors for
+  each LiDAR point based on local least-squares approximation for real-
+  time illumination during viewing.
+- LiDAR viewer can now do real-time point-based lighting with arbitrary
+  numbers of OpenGL light sources when loading LiDAR files with pre-
+  calculated point normal vectors.
+
+LiDAR Viewer 2.1:
+- Fixed bug in point-based lighting shader that for some reason only
+  showed up in Mac OS X.
+- Added utility to print contents of saved primitive files back to LiDAR
+  Viewer distribution.
+
+LiDAR Viewer 2.2:
+- Added CalcLasRange utility to distribution; prints the bounding box of
+  the point set stored in a single LAS file, and the range of intensity
+  values to calculate a good color mask for LidarPreprocessor.
+- Added (temporary) -lasOffset x y z command line option to
+  LidarPreprocessor to subtract the given vector from all points read
+  from all following LAS files before coordinates are converted to 32-
+  bit IEEE floating point format. This will reduce or remove accuracy
+  issues when reading LAS files in UTM coordinates.
+
+LiDAR Viewer 2.3:
+- Added preprocessor to subtract a (relatively small) set of selected
+  points from a large base point set, creating a new LiDAR point set as
+  a result.
+- Added utility to calculate the similarity of two point subsets of the
+  same base point set.
+- Added an optional LidarViewer.cfg configuration file to persistently
+  store LiDAR Viewer configuration options. File is located in etc
+  directory underneath LiDAR Viewer's installation directory.
+- Now LidarPreprocessor reads configuration settings from
+  LidarViewer.cfg as well.
+
+LiDAR Viewer 2.4:
+- Incorporated most recent changes from development version:
+  - Ability to combine LiDAR files in preprocessor
+- Added primitive to visualize strike and dip angles of a plane.
+
+LiDAR Viewer 2.5:
+- Added ability to read gzipped ASCII input files to preprocessor.
+- Bumped Vrui version requirement to 1.0-065.
+
+LiDAR Viewer 2.6:
+- Now printing strike and dip angle to console when creating a strike+
+  dip indicator primitive.
+- Bumped Vrui version requirement to 2.0-pre.
+
+LiDAR Viewer 2.7:
+- Some minor improvements and bug fixes.
+- Bumped Vrui version requirement to 2.1-001.
+- Changed build system to simplify creating binary packages.
+
+LiDAR Viewer 2.8:
+- Bumped Vrui version requirement to 2.2-001.
+- Changed build system to follow Vrui's new modular build system.
+- New transformation functionality in LidarPreprocessor.
+- Significant code clean-up in LidarPreprocessor.
+- New neighborhood-size based illumination in LidarIlluminator.
+- Proper handling of offset vectors when newly-extracted primitives are
+  printed.
+- Added ability to load and store selector tools' states in
+  configuration files.
+
+LiDAR Viewer 2.9:
+- Bumped Vrui version requirement to 2.4-001.
+- New capability to exaggerate distance to arbitrary planes in real time
+  during 3D visualization in LiDAR Viewer.
+  - Works with Vrui's measurement tool via a coordinate transformer.
+- Clipping planes now work while lighting is enabled.
+- Plane distance texture mapping now respects the lighting flag.
+- Added background read-ahead to pre-processor's input filters for a
+  slight speed-up when reading source files.
+- Parallelized octree generation in LiDAR pre-processor for significant
+  speed-up (about 3x on a 4-core CPU).
+- Made handling of offsets consistent in LiDAR Viewer:
+  - Selected points are saved in original coordinate system
+    - Upped field width in ASCII exporter to handle typical offsets
+  - Extracted primitives are reported in original coordinate system
+  - Primitives are saved in original coordinate system
+- LiDAR Exporter saves point in original coordinate system
+- LiDAR subtractor properly handles offsets
+  - Removes LiDAR file's offset from subtraction set before comparison
+  - Adds offset before storing result points in octree
+  - Offset defaults to same offset as LiDAR file
+- LiDAR subtractor has same command line options as LiDAR preprocessor,
+  as far as applicable
+- LiDAR subtractor reads default values from LidarViewer.cfg
+- Added -boxOnly command line option to CalcLasRange to only report
+  bounding boxes; will only read headers and not entire files.
+- Added file selection dialogs for "Save Selection..." and "Save
+  Primitives..." menu entries.
+
+LiDAR Viewer 2.10:
+- Adapted to and bumped Vrui version requirement to 2.5-001.
+
+LiDAR Viewer 2.11:
+- Bumped Vrui version requirement to 2.7-001.
+- Added material properties editor to render dialog.
+- Reorganized render dialog with multi-page widget.
+- Fixed LidarColorMapper utility, and added reprojection between
+  different geographical coordinate systems.
+- Added "-showCoverage <wrl file name>" option to CalcLasRange to create
+  a scene graph showing the names and bounding boxes of all LAS files
+  given on the command line.
+- Added LidarSpotRemover utility.
+
+LiDAR Viewer 2.12:
+- Bumped Vrui version requirement to 3.0-001.
+
+LiDAR Viewer 2.13:
+- Added "Environment" tab to render dialog to control background color
+  and draw distance dynamically.
+- Bumped Vrui requirement to 4.2-006 and fixed some incompatibilities.
+
+LiDAR Viewer 2.14:
+- Bumped Vrui requirement to 5.0-001.
+- Fixed bug in Element::hasListProperty method in ReadPlyFile.cpp.
+
+LiDAR Viewer 2.15:
+- Bumped Vrui version requirement to Vrui-7.0-001
+- Added support for Vrui collaboration infrastructure, version 4.1
+
+LiDAR Viewer 2.16:
+- Bumped Vrui version requirement to Vrui-8.0-001
+- Adapted to new Vrui build system
+- Added support for Vrui collaboration infrastructure, version 5.0
+
+LiDAR Viewer 2.17:
+- Bumped Vrui version requirement to Vrui-10.2-002
+- Bumped Vrui collaboration infrastructure version requirement to 8.0
+- Adapted to API changes in collaboration infrastructure
+- Replaced deprecated type shortcuts in LidarPreprocessor.cpp with new
+  standard shortcuts.
+- Simplified menu creation code in LidarViewer.cpp.
+
+LiDAR Viewer 2.18:
+- Bumped Vrui version requirement to Vrui-12.0-001
+- Bumped Vrui collaboration infrastructure version requirement to 10.0
+- Added option to load color data from additional color files to
+  LidarProcessOctree.
+- Added option to read additional color file to LidarExporter.
+- Fixed request code for Koinonia plug-in in LidarViewer.
+- Adapted to API changes in Vrui.
+
+LiDAR Viewer 2.18:
+- Added gamma correction of point colors to PointBasedLightingShader.
