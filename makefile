@@ -43,10 +43,11 @@ INSTALLDIR := $(shell pwd)
 # subsequent release versions of LiDAR Viewer from clobbering each
 # other. The value should be identical to the major.minor version
 # number found in VERSION in the root package directory.
-VERSION = 2.19
-LIDARVIEWER_NAME = LidarViewer-$(VERSION)
+PACKAGE_VERSION = 2.19
+PACKAGE_NAME = LidarViewer-$(PACKAGE_VERSION)
 
-# Set up resource directories: */
+# Set up the source directory structure
+PACKAGEROOT := $(shell pwd)
 CONFIGDIR = etc
 CONFIGFILENAME = LidarViewer.cfg
 
@@ -56,25 +57,31 @@ include $(VRUI_MAKEDIR)/SystemDefinitions
 include $(VRUI_MAKEDIR)/Packages.System
 include $(VRUI_MAKEDIR)/Configuration.Vrui
 include $(VRUI_MAKEDIR)/Packages.Vrui
+
+# Check if the Vrui Collaboration Infrastructure is installed
 -include $(VRUI_MAKEDIR)/Configuration.Collaboration
 -include $(VRUI_MAKEDIR)/Packages.Collaboration
-
-# Check if the Vrui Collaboration Infrastructure is installed:
 ifdef COLLABORATION_VERSION
   HAVE_COLLABORATION = 1
 else
   HAVE_COLLABORATION = 0
 endif
 
-# Set installation directory structure:
+# Set up installation directory structure:
 EXECUTABLEINSTALLDIR = $(INSTALLDIR)/$(EXEDIR)
-ifeq ($(INSTALLDIR),$(PWD))
-  ETCINSTALLDIR = $(INSTALLDIR)/etc
-else ifneq ($(findstring $(LIDARVIEWER_NAME),$(INSTALLDIR)),)
-  ETCINSTALLDIR = $(INSTALLDIR)/etc
+ifeq ($(INSTALLDIR),$(PACKAGEROOT))
+  ETCINSTALLDIR = $(INSTALLDIR)/$(CONFIGDIR)
+else ifneq ($(findstring $(PACKAGE_NAME),$(INSTALLDIR)),)
+  ETCINSTALLDIR = $(INSTALLDIR)/$(CONFIGDIR)
 else
-	ETCINSTALLDIR = $(INSTALLDIR)/etc/$(LIDARVIEWER_NAME)
+	ETCINSTALLDIR = $(INSTALLDIR)/$(CONFIGDIR)/$(PACKAGE_NAME)
 endif
+
+########################################################################
+# Specify additional compiler and linker flags
+########################################################################
+
+CFLAGS += -Wall -pedantic
 
 ########################################################################
 # List common packages used by all components of this project
@@ -106,10 +113,10 @@ EXECUTABLES += $(EXEDIR)/CalcLasRange \
                $(EXEDIR)/PointSetSimilarity \
                $(EXEDIR)/PrintPrimitiveFile
 
-ALL = $(CONFIGS) $(EXECUTABLES) $(PLUGINS)
+ALL = $(EXECUTABLES) $(PLUGINS)
 
 .PHONY: all
-all: $(ALL)
+all: $(CONFIGS) $(ALL)
 
 ########################################################################
 # Pseudo-target to print configuration options and configure the package
@@ -164,6 +171,7 @@ extraclean:
 .PHONY: extrasqueakyclean
 extrasqueakyclean:
 	-rm -f $(ALL)
+	-rm -r $(CONFIGS)
 
 # Include basic makefile
 include $(VRUI_MAKEDIR)/BasicMakefile
