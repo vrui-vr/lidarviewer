@@ -1,6 +1,6 @@
 /***********************************************************************
 LidarOctree - Class to render multiresolution LiDAR point sets.
-Copyright (c) 2005-2024 Oliver Kreylos
+Copyright (c) 2005-2025 Oliver Kreylos
 
 This file is part of the LiDAR processing and analysis package.
 
@@ -233,7 +233,7 @@ LidarOctree::DataItem::DataItem(unsigned int sCacheSize)
 	/* Initialize the LRU cache slot list: */
 	lruHead=&cacheSlots[0];
 	cacheSlots[0].pred=0;
-	for(int i=1;i<cacheSize;++i)
+	for(unsigned int i=1;i<cacheSize;++i)
 		{
 		cacheSlots[i-1].succ=&cacheSlots[i];
 		cacheSlots[i].pred=&cacheSlots[i-1];
@@ -687,7 +687,7 @@ void LidarOctree::selectPoints(LidarOctree::Node* node,const LidarOctree::Intera
 		if(selectionEmpty&&node->selectedPoints!=0)
 			{
 			/* Check if the node's parent is in the coarsening heap: */
-			if(node->parent!=0&&node->parent->coarseningHeapIndex!=~0x0)
+			if(node->parent!=0&&node->parent->coarseningHeapIndex!=~0x0U)
 				{
 				Threads::Mutex::Lock coarseningHeapLock(coarseningHeapMutex);
 				coarseningHeap->remove(node->parent);
@@ -729,7 +729,7 @@ bool LidarOctree::deselectPoints(LidarOctree::Node* node,const LidarOctree::Inte
 			for(int childIndex=0;childIndex<8;++childIndex)
 				canCoarsen=deselectPoints(&node->children[childIndex],interactor)&&canCoarsen;
 			
-			if(canCoarsen&&node->coarseningHeapIndex==~0x0)
+			if(canCoarsen&&node->coarseningHeapIndex==~0x0U)
 				{
 				/* Insert the node into the coarsening heap: */
 				Threads::Mutex::Lock coarseningHeapLock(coarseningHeapMutex);
@@ -794,7 +794,7 @@ bool LidarOctree::clearSelection(LidarOctree::Node* node)
 		for(int childIndex=0;childIndex<8;++childIndex)
 			canCoarsen=clearSelection(&node->children[childIndex])&&canCoarsen;
 		
-		if(canCoarsen&&node->coarseningHeapIndex==~0x0)
+		if(canCoarsen&&node->coarseningHeapIndex==~0x0U)
 			{
 			/* Insert the node into the coarsening heap: */
 			Threads::Mutex::Lock coarseningHeapLock(coarseningHeapMutex);

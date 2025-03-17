@@ -1,6 +1,6 @@
 /***********************************************************************
 LidarOctree - Class to render multiresolution LiDAR point sets.
-Copyright (c) 2005-2013 Oliver Kreylos
+Copyright (c) 2005-2025 Oliver Kreylos
 
 This file is part of the LiDAR processing and analysis package.
 
@@ -309,7 +309,7 @@ class LidarOctree:public GLObject
 	const Vector& getPointOffset(void) const // Returns an offset vector to transform LiDAR octree coordinates to source point coordinates
 		{
 		return pointOffset;
-		};
+		}
 	void setTreeUpdateFunction(TreeUpdateFunction newTreeUpdateFunction,void* newTreeUpdateFunctionArg);
 	void setRenderQuality(Scalar qualityLevel); // Sets the quality level for rendering, 0 is normal quality
 	void setFocusAndContext(const Point& newFncCenter,Scalar newFncRadius,Scalar newFncWeight); // Adjusts focus+context LOD adjustment parameters
@@ -347,7 +347,7 @@ class LidarOctree:public GLObject
 			processSelectedPoints<NVertex,PointProcessorParam>(&root,pp);
 		else
 			processSelectedPoints<Vertex,PointProcessorParam>(&root,pp);
-		};
+		}
 	template <class PointNormalProcessorParam>
 	void processSelectedPointsWithNormals(PointNormalProcessorParam& pp) const // Processes the set of selected points in leaf nodes with the given point processor
 		{
@@ -356,7 +356,7 @@ class LidarOctree:public GLObject
 			processSelectedPointsWithNormals<PointNormalProcessorParam>(&root,pp);
 		else
 			processSelectedPointsWithNullNormals<PointNormalProcessorParam>(&root,pp);
-		};
+		}
 	template <class ColoringPointProcessorParam>
 	void colorSelectedPoints(ColoringPointProcessorParam& cpp) // Ditto, but allows point processor to change the selection color of selected points
 		{
@@ -365,7 +365,7 @@ class LidarOctree:public GLObject
 			colorSelectedPoints<NVertex,ColoringPointProcessorParam>(&root,cpp);
 		else
 			colorSelectedPoints<Vertex,ColoringPointProcessorParam>(&root,cpp);
-		};
+		}
 	};
 
 #ifndef LIDAROCTREE_IMPLEMENTATION

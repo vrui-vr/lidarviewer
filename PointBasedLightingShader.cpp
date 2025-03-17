@@ -1,7 +1,7 @@
 /***********************************************************************
 PointBasedLightingShader - Class to maintain a GLSL point-based lighting
 shader that tracks the current OpenGL lighting state.
-Copyright (c) 2008-2024 Oliver Kreylos
+Copyright (c) 2008-2025 Oliver Kreylos
 
 This file is part of the LiDAR processing and analysis package.
 
@@ -355,7 +355,7 @@ PointBasedLightingShader::PointBasedLightingShader(GLContextData& sContextData)
 	 usePlaneDistance(false),
 	 usePointColors(false),
 	 useSplatting(false),
-	 vertexShader(0),geometryShader(0),fragmentShader(0),programObject(0),geometryShaderAttached(false)
+	 vertexShader(0),fragmentShader(0),geometryShader(0),programObject(0),geometryShaderAttached(false)
 	{
 	/* Check for the required OpenGL extensions: */
 	if(!GLARBShaderObjects::isSupported())

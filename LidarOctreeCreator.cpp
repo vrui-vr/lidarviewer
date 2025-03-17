@@ -1,7 +1,7 @@
 /***********************************************************************
 LidarOctreeCreator - Class to create LiDAR octrees from point clouds
 using an out-of-core algorithm.
-Copyright (c) 2007-2024 Oliver Kreylos
+Copyright (c) 2007-2025 Oliver Kreylos
 
 This file is part of the LiDAR processing and analysis package.
 
@@ -670,7 +670,7 @@ LidarOctreeCreator::LidarOctreeCreator(size_t sMaxNumCachablePoints,unsigned int
 	
 	/* Start the subsampling threads: */
 	subsampleThreads=new Threads::Thread[numSubsampleThreads];
-	for(int i=0;i<numSubsampleThreads;++i)
+	for(unsigned int i=0;i<numSubsampleThreads;++i)
 		subsampleThreads[i].start(this,&LidarOctreeCreator::subsampleThreadMethod);
 	
 	/* Create the root's subtree: */
@@ -681,11 +681,11 @@ LidarOctreeCreator::LidarOctreeCreator(size_t sMaxNumCachablePoints,unsigned int
 	createSubTree(root,rootDomain);
 	
 	/* Send the end-of-queue sentinel values to shut down the subsampling threads: */
-	for(int i=0;i<numSubsampleThreads;++i)
+	for(unsigned int i=0;i<numSubsampleThreads;++i)
 		subsampleQueue.push(0);
 	
 	/* Wait for the subsampling threads to shut down: */
-	for(int i=0;i<numSubsampleThreads;++i)
+	for(unsigned int i=0;i<numSubsampleThreads;++i)
 		subsampleThreads[i].join();
 	delete[] subsampleThreads;
 	subsampleThreads=0;
@@ -803,7 +803,7 @@ void LidarOctreeCreator::write(size_t memorySize,const char* lidarFileName)
 	ofh.write(octreeFile);
 	
 	/* Write the octree index file: */
-	for(int level=0;level<=maxLevel;++level)
+	for(unsigned int level=0;level<=maxLevel;++level)
 		writeIndexFileLevel(root,level,octreeFile);
 	std::cout<<" done"<<std::endl;
 	}
@@ -829,7 +829,7 @@ void LidarOctreeCreator::write(size_t memorySize,const char* lidarFileName)
 	/* Write the octree points file: */
 	numWrittenNodes=0;
 	nextNumWrittenNodesUpdate=(totalNumNodes+199U)/200U;
-	for(int level=0;level<=maxLevel;++level)
+	for(unsigned int level=0;level<=maxLevel;++level)
 		{
 		/* Fill the double-buffer from the temporary point file for this level: */
 		fileSize=tempPointFiles[level]->file->getWritePos()/sizeof(LidarPoint);

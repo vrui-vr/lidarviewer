@@ -1,7 +1,7 @@
 /***********************************************************************
 LidarGridder - Experimental program to resample LiDAR data onto a
 regular grid.
-Copyright (c) 2009-2024 Oliver Kreylos
+Copyright (c) 2009-2025 Oliver Kreylos
 
 This file is part of the LiDAR processing and analysis package.
 
@@ -690,7 +690,7 @@ void LidarGridder::writeArcInfoBinaryGridFile(const char* directoryName) const
 	
 	/* Write second batch of dummy data: */
 	unsigned int dummy2[18];
-	for(int i=0;i<sizeof(dummy2)/sizeof(dummy2[0]);++i)
+	for(size_t i=0;i<sizeof(dummy2)/sizeof(dummy2[0]);++i)
 		dummy2[i]=0U;
 	tileIndexFile.write<unsigned int>(dummy2,sizeof(dummy2)/sizeof(dummy2[0]));
 	
@@ -723,7 +723,7 @@ void LidarGridder::writeArcInfoBinaryGridFile(const char* directoryName) const
 	
 	/* Write second batch of dummy data: */
 	unsigned int dummy2[18];
-	for(int i=0;i<sizeof(dummy2)/sizeof(dummy2[0]);++i)
+	for(size_t i=0;i<sizeof(dummy2)/sizeof(dummy2[0]);++i)
 		dummy2[i]=0U;
 	tileFile.write<unsigned int>(dummy2,sizeof(dummy2)/sizeof(dummy2[0]));
 	

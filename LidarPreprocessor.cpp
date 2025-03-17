@@ -1453,7 +1453,7 @@ int main(int argc,char* argv[])
 				if(!readColumnIndexMask(argc,argv,i,asciiColumnIndices))
 					{
 					std::cerr<<"Invalid column indices for ASCII file"<<std::endl;
-					pointFileType==ILLEGAL;
+					pointFileType=ILLEGAL;
 					}
 				}
 			else if(strcasecmp(argv[i]+1,"asciirgb")==0)
@@ -1464,7 +1464,7 @@ int main(int argc,char* argv[])
 				if(!readColumnIndexMask(argc,argv,i,asciiColumnIndices))
 					{
 					std::cerr<<"Invalid column indices for RGB ASCII file"<<std::endl;
-					pointFileType==ILLEGAL;
+					pointFileType=ILLEGAL;
 					}
 				}
 			else if(strcasecmp(argv[i]+1,"csv")==0)
@@ -1475,7 +1475,7 @@ int main(int argc,char* argv[])
 				if(!readColumnIndexMask(argc,argv,i,asciiColumnIndices))
 					{
 					std::cerr<<"Invalid column indices for CSV file"<<std::endl;
-					pointFileType==ILLEGAL;
+					pointFileType=ILLEGAL;
 					}
 				}
 			else if(strcasecmp(argv[i]+1,"csvrgb")==0)
@@ -1486,7 +1486,7 @@ int main(int argc,char* argv[])
 				if(!readColumnIndexMask(argc,argv,i,asciiColumnIndices))
 					{
 					std::cerr<<"Invalid column indices for RGB CSV file"<<std::endl;
-					pointFileType==ILLEGAL;
+					pointFileType=ILLEGAL;
 					}
 				}
 			else if(strcasecmp(argv[i]+1,"blockedascii")==0)
@@ -1497,7 +1497,7 @@ int main(int argc,char* argv[])
 				if(!readColumnIndexMask(argc,argv,i,asciiColumnIndices))
 					{
 					std::cerr<<"Invalid column indices for blocked ASCII file"<<std::endl;
-					pointFileType==ILLEGAL;
+					pointFileType=ILLEGAL;
 					}
 				}
 			else if(strcasecmp(argv[i]+1,"blockedasciirgb")==0)
@@ -1508,7 +1508,7 @@ int main(int argc,char* argv[])
 				if(!readColumnIndexMask(argc,argv,i,asciiColumnIndices))
 					{
 					std::cerr<<"Invalid column indices for blocked RGB ASCII file"<<std::endl;
-					pointFileType==ILLEGAL;
+					pointFileType=ILLEGAL;
 					}
 				}
 			else if(strcasecmp(argv[i]+1,"idl")==0)
