@@ -25,7 +25,7 @@
 # matches the default Vrui installation; if Vrui's installation
 # directory was changed during Vrui's installation, the directory below
 # must be adapted.
-VRUI_MAKEDIR := /usr/local/share/Vrui-12.3/make
+VRUI_MAKEDIR := /usr/local/share/Vrui-13.0/make
 
 # Base installation directory for LiDAR Viewer. If this is set to the
 # default of $(PWD), LiDAR Viewer does not have to be installed to be
@@ -39,17 +39,16 @@ INSTALLDIR := $(shell pwd)
 # Everything below here should not have to be changed
 ########################################################################
 
+# Name of the package
+PROJECT_NAME = LidarViewer
+PROJECT_DISPLAYNAME = LiDAR Viewer
+
 # Version number for installation subdirectories. This is used to keep
 # subsequent release versions of LiDAR Viewer from clobbering each
 # other. The value should be identical to the major.minor version
 # number found in VERSION in the root package directory.
-PACKAGE_VERSION = 2.19
-PACKAGE_NAME = LidarViewer-$(PACKAGE_VERSION)
-
-# Set up the source directory structure
-PACKAGEROOT := $(shell pwd)
-CONFIGDIR = etc
-CONFIGFILENAME = LidarViewer.cfg
+PROJECT_MAJOR = 2
+PROJECT_MINOR = 20
 
 # Include definitions for the system environment and system-provided
 # packages
@@ -65,16 +64,6 @@ ifdef COLLABORATION_VERSION
   HAVE_COLLABORATION = 1
 else
   HAVE_COLLABORATION = 0
-endif
-
-# Set up installation directory structure:
-EXECUTABLEINSTALLDIR = $(INSTALLDIR)/$(EXEDIR)
-ifeq ($(INSTALLDIR),$(PACKAGEROOT))
-  ETCINSTALLDIR = $(INSTALLDIR)/$(CONFIGDIR)
-else ifneq ($(findstring $(PACKAGE_NAME),$(INSTALLDIR)),)
-  ETCINSTALLDIR = $(INSTALLDIR)/$(CONFIGDIR)
-else
-	ETCINSTALLDIR = $(INSTALLDIR)/$(CONFIGDIR)/$(PACKAGE_NAME)
 endif
 
 ########################################################################
@@ -131,7 +120,7 @@ config-invalidate:
 
 $(DEPDIR)/Configure-Begin:
 	@mkdir -p $(DEPDIR)
-	@echo "---- LiDAR Viewer configuration options: ----"
+	@echo "---- $(PROJECT_FULLDISPLAYNAME) configuration options: ----"
 ifdef COLLABORATION_VERSION
 	@echo "Collaborative visualization enabled"
 else
@@ -142,20 +131,20 @@ endif
 $(DEPDIR)/Configure-LidarViewer: $(DEPDIR)/Configure-Begin
 	@cp Config.h.template Config.h.temp
 	@$(call CONFIG_SETVAR,Config.h.temp,USE_COLLABORATION,$(HAVE_COLLABORATION))
-	@$(call CONFIG_SETSTRINGVAR,Config.h.temp,LIDARVIEWER_CONFIGFILENAME,$(ETCINSTALLDIR)/$(CONFIGFILENAME))
+	@$(call CONFIG_SETSTRINGVAR,Config.h.temp,LIDARVIEWER_CONFIGFILENAME,$(ETCINSTALLDIR)/LidarViewer.cfg)
 	@if ! diff -qN Config.h.temp Config.h > /dev/null ; then cp Config.h.temp Config.h ; fi
 	@rm Config.h.temp
 	@touch $(DEPDIR)/Configure-LidarViewer
 
 $(DEPDIR)/Configure-Install: $(DEPDIR)/Configure-LidarViewer
-	@echo "---- LiDAR Viewer installation configuration ----"
+	@echo "---- $(PROJECT_FULLDISPLAYNAME) installation configuration ----"
 	@echo "Installation directory : $(INSTALLDIR)"
 	@echo "Executable directory   : $(EXECUTABLEINSTALLDIR)"
 	@echo "Configuration directory: $(ETCINSTALLDIR)"
 	@touch $(DEPDIR)/Configure-Install
 
 $(DEPDIR)/Configure-End: $(DEPDIR)/Configure-Install
-	@echo "---- End of LiDAR Viewer configuration options ----"
+	@echo "---- End of $(PROJECT_FULLDISPLAYNAME) configuration options ----"
 	@touch $(DEPDIR)/Configure-End
 
 $(DEPDIR)/config: $(DEPDIR)/Configure-End
@@ -316,10 +305,12 @@ $(EXEDIR)/PrintPrimitiveFile: $(OBJDIR)/PrintPrimitiveFile.o
 .PHONY: PrintPrimitiveFile
 PrintPrimitiveFile: $(EXEDIR)/PrintPrimitiveFile
 
-install: $(ALL)
-	@echo Installing LiDAR Viewer in $(INSTALLDIR)...
+install:
+	@echo Installing $(PROJECT_FULLDISPLAYNAME) in $(INSTALLDIR)...
 	@install -d $(INSTALLDIR)
+	@echo Installing executables in $(EXECUTABLEINSTALLDIR)
 	@install -d $(EXECUTABLEINSTALLDIR)
-	@install $(ALL) $(EXECUTABLEINSTALLDIR)
+	@install $(EXECUTABLES) $(EXECUTABLEINSTALLDIR)
+	@echo Installing configuration files in $(ETCINSTALLDIR)
 	@install -d $(ETCINSTALLDIR)
-	@install -m u=rw,go=r $(CONFIGDIR)/LidarViewer.cfg $(ETCINSTALLDIR)
+	@install -m u=rw,go=r $(PROJECT_ETCDIR)/LidarViewer.cfg $(ETCINSTALLDIR)

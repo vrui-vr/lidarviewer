@@ -195,3 +195,8 @@ LiDAR Viewer 2.18:
 
 LiDAR Viewer 2.18:
 - Added gamma correction of point colors to PointBasedLightingShader.
+
+LiDAR Viewer 2.20:
+- Bumped Vrui version requirement to Vrui-12.3-001
+- Bumped Vrui collaboration infrastructure version requirement to 10.2
+- Adapted to Vrui's new project build system
