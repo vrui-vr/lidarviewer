@@ -1,6 +1,6 @@
 /***********************************************************************
 LidarViewer - Viewer program for multiresolution LiDAR data.
-Copyright (c) 2005-2023 Oliver Kreylos
+Copyright (c) 2005-2025 Oliver Kreylos
 
 This file is part of the LiDAR processing and analysis package.
 
@@ -153,6 +153,8 @@ class LidarViewer:public Vrui::Application,public Vrui::TransparentObject,public
 	Scalar fncWeight; // Weight factor for focus+context LOD adjustment
 	float pointSize; // The pixel size used to render LiDAR points
 	RenderSettings renderSettings; // Environment-independent rendering settings
+	SceneGraph::TransformNodePointer sceneGraphRoot; // Common root node for additional scene graphs
+	std::vector<SceneGraph::GraphNodePointer> sceneGraphs; // List of additional loaded scene graphs
 	#if USE_COLLABORATION
 	KoinoniaClient* koinonia; // Koinonia plug-in protocol
 	KoinoniaProtocol::ObjectID renderSettingsId; // Koinonia ID to share rendering settings
@@ -186,7 +188,6 @@ class LidarViewer:public Vrui::Application,public Vrui::TransparentObject,public
 	GLMotif::PopupWindow* renderDialog; // The rendering settings dialog
 	GLMotif::PopupWindow* interactionDialog; // The interaction settings dialog
 	GLMotif::RadioBox* interactionDialogSelectorModes;
-	SceneGraph::TransformNodePointer sceneGraphRoot; // Common root node for additional scene graphs
 	IO::DirectoryPtr dataDirectory; // Last directory from/to which selections or primitives were loaded/saved
 	
 	/* Private methods: */

@@ -83,6 +83,7 @@ Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include <Vrui/LightsourceManager.h>
 #include <Vrui/Viewer.h>
 #include <Vrui/CoordinateManager.h>
+#include <Vrui/SceneGraphManager.h>
 #include <Vrui/GenericAbstractToolFactory.h>
 #include <Vrui/ToolManager.h>
 #include <Vrui/ClusterSupport.h>
@@ -1272,7 +1273,6 @@ LidarViewer::LidarViewer(int& argc,char**& argv)
 	 selectedPrimitiveColor(0.1f,0.5f,0.5f,0.5f),
 	 lastPickedPrimitive(-1),
 	 mainMenu(0),octreeDialog(0),renderDialog(0),interactionDialog(0),
-	 sceneGraphRoot(0),
 	 dataDirectory(0)
 	{
 	memCacheSize=512;
@@ -1363,14 +1363,23 @@ LidarViewer::LidarViewer(int& argc,char**& argv)
 					{
 					++i;
 					
-					/* Create a root node if there is none yet: */
-					if(sceneGraphRoot==0)
-						sceneGraphRoot=new SceneGraph::TransformNode;
-					
-					/* Load the scene graph file: */
-					SceneGraph::NodeCreator nodeCreator;
-					SceneGraph::VRMLFile vrmlFile(argv[i],nodeCreator);
-					vrmlFile.parse(*sceneGraphRoot);
+					try
+						{
+						/* Load the scene graph: */
+						SceneGraph::GraphNodePointer sg=Vrui::getSceneGraphManager()->loadSceneGraph(argv[i]);
+						
+						/* Create the common root node if there is none yet: */
+						if(sceneGraphRoot==0)
+							sceneGraphRoot=new SceneGraph::TransformNode;
+						
+						/* Add the loaded scene graph to the list and the common root node: */
+						sceneGraphRoot->addChild(*sg);
+						sceneGraphs.push_back(sg);
+						}
+					catch(const std::runtime_error& err)
+						{
+						Misc::formattedUserWarning("Cannot load scene graph from file %s due to exception %s",argv[i],err.what());
+						}
 					}
 				}
 			}
@@ -1447,11 +1456,15 @@ LidarViewer::LidarViewer(int& argc,char**& argv)
 	coordTransform=new Vrui::AffineCoordinateTransform(Vrui::ATransform::translate(-offVec));
 	Vrui::getCoordinateManager()->setCoordinateTransform(coordTransform);
 	
-	/* Apply the transformation to any additional scene graphs: */
+	/* Check if there are any additional scene graphs: */
 	if(sceneGraphRoot!=0)
 		{
+		/* Apply the coordinate transformation to the common root node: */
 		sceneGraphRoot->translation.setValue(-offVec);
 		sceneGraphRoot->update();
+		
+		/* Add the common root node to Vrui's navigational-space scene graph: */
+		Vrui::getSceneGraphManager()->addNavigationalNode(*sceneGraphRoot);
 		}
 	
 	/* Create the sun lightsource: */
@@ -1817,10 +1830,6 @@ void LidarViewer::display(GLContextData& contextData) const
 	
 	/* Render LiDAR Viewer's own scene graph: */
 	renderSceneGraph(contextData);
-	
-	/* Render any additional scene graphs: */
-	if(sceneGraphRoot!=0)
-		Vrui::renderSceneGraph(sceneGraphRoot.getPointer(),true,contextData);
 	
 	glDisable(GL_LIGHTING);
 	glDisable(GL_CULL_FACE);
