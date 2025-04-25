@@ -42,7 +42,8 @@ Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include <GLMotif/TextFieldSlider.h>
 #include <GLMotif/HSVColorSelector.h>
 #include <GLMotif/FileSelectionDialog.h>
-#include <SceneGraph/TransformNode.h>
+#include <SceneGraph/DOGTransformNode.h>
+#include <SceneGraph/SceneGraphList.h>
 #include <Vrui/Vrui.h>
 #include <Vrui/Application.h>
 #include <Vrui/SurfaceNavigationTool.h>
@@ -153,8 +154,8 @@ class LidarViewer:public Vrui::Application,public Vrui::TransparentObject,public
 	Scalar fncWeight; // Weight factor for focus+context LOD adjustment
 	float pointSize; // The pixel size used to render LiDAR points
 	RenderSettings renderSettings; // Environment-independent rendering settings
-	SceneGraph::TransformNodePointer sceneGraphRoot; // Common root node for additional scene graphs
-	std::vector<SceneGraph::GraphNodePointer> sceneGraphs; // List of additional loaded scene graphs
+	SceneGraph::DOGTransformNodePointer sceneGraphRoot; // Common root node for additional scene graphs
+	SceneGraph::SceneGraphList sceneGraphList; // Dynamic list of additionally loaded scene graphs
 	#if USE_COLLABORATION
 	KoinoniaClient* koinonia; // Koinonia plug-in protocol
 	KoinoniaProtocol::ObjectID renderSettingsId; // Koinonia ID to share rendering settings
@@ -268,6 +269,7 @@ class LidarViewer:public Vrui::Application,public Vrui::TransparentObject,public
 	void octreeSelectionCallback(GLMotif::ToggleButton::ValueChangedCallbackData* cbData,const int& octreeIndex);
 	void showRenderDialogCallback(Misc::CallbackData* cbData);
 	void showInteractionDialogCallback(Misc::CallbackData* cbData);
+	void showSceneGraphListCallback(Misc::CallbackData* cbData);
 	void overrideToolsCallback(GLMotif::ToggleButton::ValueChangedCallbackData* cbData);
 	void brushSizeSliderCallback(GLMotif::TextFieldSlider::ValueChangedCallbackData* cbData);
 	void updateTreeCallback(GLMotif::ToggleButton::ValueChangedCallbackData* cbData);

@@ -38,6 +38,7 @@ Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include <Misc/StandardValueCoders.h>
 #include <Misc/ColorValueCoders.h>
 #include <Misc/ConfigurationFile.h>
+#include <IO/Directory.h>
 #include <IO/File.h>
 #include <IO/ValueSource.h>
 #include <IO/OpenFile.h>
@@ -425,6 +426,9 @@ GLMotif::PopupMenu* LidarViewer::createDialogMenu(void)
 	
 	GLMotif::Button* showInteractionDialogButton=new GLMotif::Button("ShowInteractionDialogButton",dialogMenu,"Show Interaction Dialog");
 	showInteractionDialogButton->getSelectCallbacks().add(this,&LidarViewer::showInteractionDialogCallback);
+	
+	GLMotif::Button* showSceneGraphListButton=new GLMotif::Button("ShowSceneGraphListButton",dialogMenu,"Show Scene Graph List");
+	showSceneGraphListButton->getSelectCallbacks().add(this,&LidarViewer::showSceneGraphListCallback);
 	
 	dialogMenu->manageMenu();
 	
@@ -1257,6 +1261,8 @@ LidarViewer::LidarViewer(int& argc,char**& argv)
 	 coordTransform(0),
 	 renderQuality(0),fncWeight(0.5),
 	 pointSize(3.0f),
+	 sceneGraphRoot(new SceneGraph::DOGTransformNode),
+	 sceneGraphList(*sceneGraphRoot,*IO::Directory::getCurrent()),
 	 #if USE_COLLABORATION
 	 koinonia(0),
 	 #endif
@@ -1366,15 +1372,7 @@ LidarViewer::LidarViewer(int& argc,char**& argv)
 					try
 						{
 						/* Load the scene graph: */
-						SceneGraph::GraphNodePointer sg=Vrui::getSceneGraphManager()->loadSceneGraph(argv[i]);
-						
-						/* Create the common root node if there is none yet: */
-						if(sceneGraphRoot==0)
-							sceneGraphRoot=new SceneGraph::TransformNode;
-						
-						/* Add the loaded scene graph to the list and the common root node: */
-						sceneGraphRoot->addChild(*sg);
-						sceneGraphs.push_back(sg);
+						sceneGraphList.addSceneGraph(argv[i]);
 						}
 					catch(const std::runtime_error& err)
 						{
@@ -1454,18 +1452,11 @@ LidarViewer::LidarViewer(int& argc,char**& argv)
 		}
 	Vrui::Vector offVec(offsets);
 	coordTransform=new Vrui::AffineCoordinateTransform(Vrui::ATransform::translate(-offVec));
+	sceneGraphRoot->setTransform(SceneGraph::DOGTransform::translate(-offVec));
 	Vrui::getCoordinateManager()->setCoordinateTransform(coordTransform);
 	
-	/* Check if there are any additional scene graphs: */
-	if(sceneGraphRoot!=0)
-		{
-		/* Apply the coordinate transformation to the common root node: */
-		sceneGraphRoot->translation.setValue(-offVec);
-		sceneGraphRoot->update();
-		
-		/* Add the common root node to Vrui's navigational-space scene graph: */
-		Vrui::getSceneGraphManager()->addNavigationalNode(*sceneGraphRoot);
-		}
+	/* Add the additional scene graph root node to Vrui's navigational-space scene graph: */
+	Vrui::getSceneGraphManager()->addNavigationalNode(*sceneGraphRoot);
 	
 	/* Create the sun lightsource: */
 	sun=Vrui::getLightsourceManager()->createLightsource(false);
@@ -1578,6 +1569,7 @@ LidarViewer::~LidarViewer(void)
 		delete* pIt;
 	
 	/* Destroy the scene graph: */
+	Vrui::getSceneGraphManager()->removeNavigationalNode(*sceneGraphRoot);
 	destroySceneGraph();
 	
 	/* Delete the GUI: */
@@ -2352,6 +2344,12 @@ void LidarViewer::showInteractionDialogCallback(Misc::CallbackData* cbData)
 	{
 	/* Open the interaction dialog: */
 	Vrui::popupPrimaryWidget(interactionDialog);
+	}
+
+void LidarViewer::showSceneGraphListCallback(Misc::CallbackData* cbData)
+	{
+	/* Create and open the scene graph list: */
+	Vrui::popupPrimaryWidget(sceneGraphList.createSceneGraphDialog(*Vrui::getWidgetManager()));
 	}
 
 void LidarViewer::overrideToolsCallback(GLMotif::ToggleButton::ValueChangedCallbackData* cbData)
