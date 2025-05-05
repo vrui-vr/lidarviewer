@@ -206,3 +206,4 @@ LiDAR Viewer 2.21:
 - Use new SceneGraph::SceneGraphList class to manage additional scene
   graphs
 - Bumped Vrui version requirement to Vrui-13.1-001
+- Adjusted makefile to improved Vrui setup.

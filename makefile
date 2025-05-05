@@ -25,15 +25,16 @@
 # matches the default Vrui installation; if Vrui's installation
 # directory was changed during Vrui's installation, the directory below
 # must be adapted.
-VRUI_MAKEDIR := /usr/local/share/Vrui-13.1/make
+VRUI_MAKEDIR = /usr/local/share/Vrui-13.1/make
 
 # Base installation directory for LiDAR Viewer. If this is set to the
-# default of $(PWD), LiDAR Viewer does not have to be installed to be
-# run. Created executables and resources will be installed in the bin
-# and share directories under the given base directory, respectively.
+# default of $(PROJECT_ROOT), LiDAR Viewer does not have to be installed
+# to be run. Created executables and resources will be installed in the
+# bin and share directories under the given base directory,
+# respectively.
 # Important note: Do not use ~ as an abbreviation for the user's home
 # directory here; use $(HOME) instead.
-INSTALLDIR := $(shell pwd)
+INSTALLDIR = $(PROJECT_ROOT)
 
 ########################################################################
 # Everything below here should not have to be changed
