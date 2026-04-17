@@ -1,6 +1,6 @@
 /***********************************************************************
 LidarViewer - Viewer program for multiresolution LiDAR data.
-Copyright (c) 2005-2025 Oliver Kreylos
+Copyright (c) 2005-2026 Oliver Kreylos
 
 This file is part of the LiDAR processing and analysis package.
 
@@ -28,7 +28,6 @@ Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include <iostream>
 #include <stdexcept>
 #include <Misc/SelfDestructPointer.h>
-#include <Misc/FunctionCalls.h>
 #include <Misc/StdError.h>
 #include <Misc/PrintInteger.h>
 #include <Misc/MessageLogger.h>
@@ -38,6 +37,7 @@ Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include <Misc/StandardValueCoders.h>
 #include <Misc/ColorValueCoders.h>
 #include <Misc/ConfigurationFile.h>
+#include <Threads/FunctionCalls.h>
 #include <IO/Directory.h>
 #include <IO/File.h>
 #include <IO/ValueSource.h>
@@ -1598,7 +1598,7 @@ void LidarViewer::toolCreationCallback(Vrui::ToolManager::ToolCreationCallbackDa
 	if(surfaceNavigationTool!=0)
 		{
 		/* Set the new tool's alignment function: */
-		surfaceNavigationTool->setAlignFunction(Misc::createFunctionCall(this,&LidarViewer::alignSurfaceFrame));
+		surfaceNavigationTool->setAlignFunction(*Threads::createFunctionCall(this,&LidarViewer::alignSurfaceFrame));
 		}
 	}
 
