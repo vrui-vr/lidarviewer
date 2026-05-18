@@ -190,8 +190,11 @@ void PointBasedLightingShader::compileShader(void)
 			gl_FrontColor=ambientDiffuseAccum+specularAccum;\n\
 			\n";
 	
-	/* Insert code to calculate the vertex' position relative to all user-specified clipping planes: */
-	vertexShaderMain+=cpt.createCalcClipDistances("vertexEc");
+	if(!useSplatting)
+		{
+		/* Insert code to calculate the vertex' position relative to all user-specified clipping planes: */
+		vertexShaderMain+=cpt.createCalcClipDistances("vertexEc");
+		}
 	
 	/* Finish the main vertex shader: */
 	if(useSplatting)
@@ -233,15 +236,16 @@ void PointBasedLightingShader::compileShader(void)
 			}
 		
 		/* Compile the surfel generation geometry shader: */
-		const char* geometryShaderSource="\
-			#version 120\n\
+		std::string geometryShaderDefines="\
+			#version 130\n\
 			#extension GL_ARB_geometry_shader4: enable\n\
 			\n\
 			uniform float surfelSize;\n\
 			\n\
 			varying in vec3 normal[];\n\
-			varying in float splatSize[];\n\
-			\n\
+			varying in float splatSize[];\n";
+		
+		std::string geometryShaderMain="\
 			void main()\n\
 				{\n\
 				/* Calculate quad base vectors based on the eye-coordinate vertex position and normal: */\n\
@@ -258,25 +262,38 @@ void PointBasedLightingShader::compileShader(void)
 				/* Emit the quad's four vertices: */\n\
 				gl_TexCoord[0].st=vec2(-1.0,-1.0);\n\
 				gl_FrontColor=gl_FrontColorIn[0];\n\
-				gl_Position=gl_ProjectionMatrix*(gl_PositionIn[0]+vec4(x,0.0));\n\
+				vec4 vertex0Ec=gl_PositionIn[0]+vec4(x,0.0);\n";
+		geometryShaderMain+=cpt.createCalcClipDistances("vertex0Ec");
+		geometryShaderMain+="\
+				gl_Position=gl_ProjectionMatrix*vertex0Ec;\n\
 				EmitVertex();\n\
 				\n\
 				gl_TexCoord[0].st=vec2(1.0,-1.0);\n\
 				gl_FrontColor=gl_FrontColorIn[0];\n\
-				gl_Position=gl_ProjectionMatrix*(gl_PositionIn[0]+vec4(y,0.0));\n\
+				vec4 vertex1Ec=gl_PositionIn[0]+vec4(y,0.0);\n";
+		geometryShaderMain+=cpt.createCalcClipDistances("vertex1Ec");
+		geometryShaderMain+="\
+				gl_Position=gl_ProjectionMatrix*vertex1Ec;\n\
 				EmitVertex();\n\
 				\n\
 				gl_TexCoord[0].st=vec2(-1.0,1.0);\n\
 				gl_FrontColor=gl_FrontColorIn[0];\n\
-				gl_Position=gl_ProjectionMatrix*(gl_PositionIn[0]-vec4(y,0.0));\n\
+				vec4 vertex2Ec=gl_PositionIn[0]-vec4(y,0.0);\n";
+		geometryShaderMain+=cpt.createCalcClipDistances("vertex2Ec");
+		geometryShaderMain+="\
+				gl_Position=gl_ProjectionMatrix*vertex2Ec;\n\
 				EmitVertex();\n\
 				\n\
 				gl_TexCoord[0].st=vec2(1.0,1.0);\n\
 				gl_FrontColor=gl_FrontColorIn[0];\n\
-				gl_Position=gl_ProjectionMatrix*(gl_PositionIn[0]-vec4(x,0.0));\n\
+				vec4 vertex3Ec=gl_PositionIn[0]-vec4(x,0.0);\n";
+		geometryShaderMain+=cpt.createCalcClipDistances("vertex3Ec");
+		geometryShaderMain+="\
+				gl_Position=gl_ProjectionMatrix*vertex3Ec;\n\
 				EmitVertex();\n\
 				}\n";
-		glCompileShaderFromString(geometryShader,geometryShaderSource);
+		std::string geometryShaderSource=geometryShaderDefines+geometryShaderMain;
+		glCompileShaderFromString(geometryShader,geometryShaderSource.c_str());
 		
 		/* Set the geometry shader's parameters: */
 		glProgramParameteriARB(programObject,GL_GEOMETRY_VERTICES_OUT_ARB,4);
