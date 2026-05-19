@@ -267,7 +267,7 @@ $(EXEDIR)/LidarGridder: $(LIDARGRIDDER_SOURCES:%.cpp=$(OBJDIR)/%.o)
 LidarGridder: $(EXEDIR)/LidarGridder
 
 LIDARVIEWER_SOURCES = LidarOctree.cpp \
-                      PointBasedLightingShader.cpp \
+                      PointShader.cpp \
                       ProjectorTool.cpp \
                       PointSelectorTool.cpp \
                       Primitive.cpp \

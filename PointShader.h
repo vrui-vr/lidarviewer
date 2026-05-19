@@ -1,0 +1,110 @@
+/***********************************************************************
+PointShader - Class for point rendering shaders that track the current
+OpenGL lighting and clipping plane state in addition to application-
+defined rendering options.
+Copyright (c) 2008-2026 Oliver Kreylos
+
+This file is part of the LiDAR processing and analysis package.
+
+The LiDAR processing and analysis package is free software; you can
+redistribute it and/or modify it under the terms of the GNU General
+Public License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
+
+The LiDAR processing and analysis package is distributed in the hope
+that it will be useful, but WITHOUT ANY WARRANTY; without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with the LiDAR processing and analysis package; if not, write to the
+Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+02111-1307 USA
+***********************************************************************/
+
+#ifndef POINTSHADER_INCLUDED
+#define POINTSHADER_INCLUDED
+
+#include <Geometry/Plane.h>
+#include <GL/gl.h>
+#include <GL/GLObject.h>
+#include <GL/Extensions/GLARBShaderObjects.h>
+
+#include "Primitive.h"
+
+class PointShader:public GLObject
+	{
+	/* Embedded classes: */
+	private:
+	enum DistPrimitiveType // Type for primitive distance functions
+		{
+		DistNone,DistPoint,DistLine,DistPlane
+		};
+	
+	struct DataItem:public GLObject::DataItem	
+		{
+		/* Elements: */
+		public:
+		bool haveGeometryShaders; // Flag if the local OpenGL supports geometry shaders
+		bool correctGamma; // Flag whether incoming point colors need to be gamma-corrected
+		GLhandleARB vertexShader,fragmentShader; // Handle for the vertex and fragment shaders
+		GLhandleARB geometryShader; // Handle for the optional geometry shader
+		GLhandleARB programObject; // Handle for the linked program object
+		bool geometryShaderAttached; // Flag whether the geometry shader is attached to the program object
+		int distCenterLocation; // Location of distance calculation center point uniform variable
+		int distAxisLocation; // Locations of distance calculation line end point uniform variables
+		int distOffsetLocation; // Location of distance calculation offset uniform variable
+		int distPlaneLocation; // Location of distance calculation plane uniform variable
+		int distScaleLocation; // Location of distance calculation scale factor
+		int distMapLocation; // Location of primitive distance texture map uniform variable
+		int surfelScaleLocation; // Location of the surfel radii scale factor uniform variable
+		GLuint distMapTexture; // Texture map ID for the distance coloring texture
+		unsigned int lightStateVersion; // Version of light tracker's state reflected in the current shader program
+		unsigned int clipPlaneStateVersion; // Version of clip plane tracker's state reflected in the current shader program
+		unsigned int settingsVersion; // Version of other shader settings reflected in the current shader program
+		
+		/* Constructors and destructors: */
+		DataItem(bool sCorrectGamma);
+		virtual ~DataItem(void);
+		};
+	
+	public:
+	typedef Geometry::Plane<Primitive::Scalar,3> Plane; // Type for texture-mapping planes
+	
+	/* Elements: */
+	private:
+	DistPrimitiveType distPrimitiveType; // Type of the currently active distance-coloring primitive
+	Primitive::Point distCenter; // Center point for distance calculations
+	Primitive::Vector distAxis; // Axis for line distance calculation
+	Primitive::Scalar distOffset; // Offset for point or line distance calculations
+	Plane distPlane; // Plane for distance calculations
+	Primitive::Scalar distScale; // Scale factor for distance calculation
+	bool useLighting; // Flag to enable point-based lighting
+	bool usePointColors; // Flag whether the point renderer uses point colors as ambient and diffuse color
+	bool useSurfels; // Flag whether the point renderer uses surface-aligned scaled disks to render points
+	Primitive::Scalar surfelScale; // Scale factor for surfel radii
+	unsigned int settingsVersion; // Version of other shader settings
+	
+	/* Private methods: */
+	void setDistPrimitiveType(DistPrimitiveType newDistPrimitiveType); // Sets the type of distance calculation primitive
+	void buildShader(GLContextData& contextData,DataItem* dataItem) const; // Rebuilds the point rendering shader based on the current states of all OpenGL light sources and clipping planes and current rendering settings
+	
+	/* Constructors and destructors: */
+	public:
+	PointShader(void); // Creates a default point rendering shader
+	
+	/* Methods from class GLObject: */
+	virtual void initContext(GLContextData& contextData) const;
+	
+	/* New methods: */
+	void setDistancePrimitive(Primitive* newDistancePrimitive); // Colors the point cloud by distance to the given primitive
+	void setDistanceScale(Primitive::Scalar newDistScale); // Sets the scale factor for distance-based coloring
+	void setUseLighting(bool newUseLighting); // Sets the lighting flag
+	void setUsePointColors(bool newUsePointColors); // Sets the point coloring flag
+	void setUseSurfels(bool newUseSurfels); // Sets the surfel rendering flag
+	void setSurfelScale(Primitive::Scalar newSurfelScale); // Sets the scale factor for surfel radii
+	void enable(GLContextData& contextData) const; // Enables the point rendering shader in the given OpenGL context
+	void disable(GLContextData& contextData) const; // Disables the point rendering shader in the given OpenGL context
+	};
+
+#endif

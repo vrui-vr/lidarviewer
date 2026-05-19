@@ -221,3 +221,7 @@ LiDAR Viewer 2.23:
   in splatting mode.
 - Add primitive distance visualization for all primitive types to
   PointBasedLightingShader.
+- Replace old fixed-function point renderer with new, more general
+  version of PointBasedLightingShader, renamed to PointShader, to get
+  gamma correction and expanded primitive distances when lighting is
+  disabled.
