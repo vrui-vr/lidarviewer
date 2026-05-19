@@ -1,6 +1,6 @@
 /***********************************************************************
 SpherePrimitive - Class for spheres extracted from point clouds.
-Copyright (c) 2007-2020 Oliver Kreylos
+Copyright (c) 2007-2026 Oliver Kreylos
 
 This file is part of the LiDAR processing and analysis package.
 
@@ -91,6 +91,12 @@ class SpherePrimitive:public PointPrimitive,public GLObject
 	
 	/* Methods from class GLObject: */
 	virtual void initContext(GLContextData& contextData) const;
+	
+	/* New methods: */
+	Scalar getRadius(void) const // Returns the sphere's radius
+		{
+		return radius;
+		}
 	};
 
 #endif

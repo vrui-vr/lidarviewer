@@ -219,3 +219,5 @@ LiDAR Viewer 2.23:
 - Bumped Vrui collaboration infrastructure version requirement to 10.5
 - Added support for user clipping planes to point-based lighting shader
   in splatting mode.
+- Add primitive distance visualization for all primitive types to
+  PointBasedLightingShader.

@@ -1,7 +1,7 @@
 /***********************************************************************
 PointBasedLightingShader - Class to maintain a GLSL point-based lighting
 shader that tracks the current OpenGL lighting state.
-Copyright (c) 2008-2025 Oliver Kreylos
+Copyright (c) 2008-2026 Oliver Kreylos
 
 This file is part of the LiDAR processing and analysis package.
 
@@ -37,9 +37,24 @@ Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include <GL/Extensions/GLARBGeometryShader4.h>
 #include <GL/Extensions/GLARBFragmentShader.h>
 
+#include "PlanePrimitive.h"
+#include "CylinderPrimitive.h"
+#include "SpherePrimitive.h"
+#include "LinePrimitive.h"
+#include "PointPrimitive.h"
+
 /*****************************************
 Methods of class PointBasedLightingShader:
 *****************************************/
+
+void PointBasedLightingShader::setDistPrimitiveType(PointBasedLightingShader::DistPrimitiveType newDistPrimitiveType)
+	{
+	/* Invalidate the shader if the primitive type changed: */
+	if(distPrimitiveType!=newDistPrimitiveType)
+		++settingsVersion;
+	
+	distPrimitiveType=newDistPrimitiveType;
+	}
 
 void PointBasedLightingShader::compileShader(void)
 	{
@@ -49,15 +64,6 @@ void PointBasedLightingShader::compileShader(void)
 	std::string vertexShaderDefines;
 	std::string vertexShaderFunctions;
 	std::string vertexShaderMain;
-	
-	if(usePlaneDistance)
-		{
-		/* Create the plane distance mapping uniforms: */
-		vertexShaderDefines+="\
-			uniform vec4 planeDistancePlane;\n\
-			uniform sampler1D planeDistanceMap;\n\
-			\n";
-		}
 	
 	/* Create the main vertex shader starting boilerplate: */
 	vertexShaderMain+="\
@@ -73,62 +79,62 @@ void PointBasedLightingShader::compileShader(void)
 			normalEc=faceforward(normalEc,normalEc,vertexEc.xyz);\n\
 			\n";
 	
-	/* Get the material components: */
-	if(usePlaneDistance)
+	/* Determine the point's material properties: */
+	if(distPrimitiveType!=DistNone)
 		{
-		#ifdef LIDARVIEWER_VISUALIZE_WATER
-		
-		vertexShaderMain+="\
-			/* Calculate the distance from the water surface: */\n\
-			float planeDist=dot(planeDistancePlane,gl_Vertex);\n\
-			vec4 ambient,diffuse;\n\
-			if(planeDist<=0.5)\n\
-				{\n\
-				/* Get the material properties from the plane distance texture: */\n\
-				ambient=texture1D(planeDistanceMap,planeDist);\n\
-				diffuse=ambient;\n\
-				}\n\
-			else\n\
-				{\n";
-		
-		if(usePointColors)
+		switch(distPrimitiveType)
 			{
-			if(correctGamma)
-				{
+			case DistPoint:
+				vertexShaderDefines+="\
+					uniform vec3 distCenter;\n\
+					uniform float distOffset\n\
+					uniform float distScale\n";
+				
 				vertexShaderMain+="\
-					/* Get the material properties from the gamma-corrected current color: */\n\
-					vec4 color=vec4(pow(gl_Color.rgb,vec3(2.2)),gl_Color.a);\n\
-					ambient=color;\n\
-					diffuse=color;\n";
-				}
-			else
-				{
+					/* Calculate the distance from the primitive: */\n\
+					float dist=(length(gl_Vertex.xyz-distCenter)-distOffset)*distScale;\n\
+					\n";
+				
+				break;
+			
+			case DistLine:
+				vertexShaderDefines+="\
+					uniform vec3 distCenter;\n\
+					uniform vec3 distAxis;\n\
+					uniform float distOffset\n\
+					uniform float distScale\n";
+				
 				vertexShaderMain+="\
-					/* Get the material properties from the current color: */\n\
-					ambient=gl_Color;\n\
-					diffuse=gl_Color;\n";
-				}
+					/* Calculate the distance from the primitive: */\n\
+					float dist=(length(cross(gl_Vertex.xyz-distCenter,distAxis))-distOffset)*distScale;\n\
+					\n";
+				
+				break;
+			
+			case DistPlane:
+				vertexShaderDefines+="\
+					uniform vec4 distPlane;\n\
+					uniform float distScale\n";
+				
+				vertexShaderMain+="\
+					/* Calculate the distance from the primitive: */\n\
+					float dist=dot(gl_Vertex,distPlane)*distScale;\n\
+					\n";
+				
+				break;
+			
+			default:
+				;
 			}
-		else
-			{
-			vertexShaderMain+="\
-				/* Get the material properties from the material state: */\n\
-				ambient=gl_FrontMaterial.ambient;\n\
-				diffuse=gl_FrontMaterial.diffuse;\n";
-			}
+		
+		/* Retrieve the point color from the distance color map: */
+		vertexShaderDefines+="\
+			uniform sampler1D distMap;\n";
 		
 		vertexShaderMain+="\
-				}\n";
-		
-		#else
-		
-		vertexShaderMain+="\
-			/* Get the material properties from the plane distance texture: */\n\
-			float planeDist=dot(planeDistancePlane,gl_Vertex);\n\
-			vec4 ambient=texture1D(planeDistanceMap,planeDist);\n\
+			/* Get the material properties from the primitive distance texture: */\n\
+			vec4 ambient=texture1D(distMap,dist);\n\
 			vec4 diffuse=ambient;\n";
-		
-		#endif
 		}
 	else if(usePointColors)
 		{
@@ -155,6 +161,8 @@ void PointBasedLightingShader::compileShader(void)
 			vec4 ambient=gl_FrontMaterial.ambient;\n\
 			vec4 diffuse=gl_FrontMaterial.diffuse;\n";
 		}
+	
+	/* Assign specular material properties: */
 	vertexShaderMain+="\
 			vec4 specular=gl_FrontMaterial.specular;\n\
 			float shininess=gl_FrontMaterial.shininess;\n\
@@ -190,12 +198,6 @@ void PointBasedLightingShader::compileShader(void)
 			gl_FrontColor=ambientDiffuseAccum+specularAccum;\n\
 			\n";
 	
-	if(!useSplatting)
-		{
-		/* Insert code to calculate the vertex' position relative to all user-specified clipping planes: */
-		vertexShaderMain+=cpt.createCalcClipDistances("vertexEc");
-		}
-	
 	/* Finish the main vertex shader: */
 	if(useSplatting)
 		{
@@ -216,6 +218,9 @@ void PointBasedLightingShader::compileShader(void)
 		}
 	else
 		{
+		/* Insert code to calculate the vertex' position relative to all user-specified clipping planes: */
+		vertexShaderMain+=cpt.createCalcClipDistances("vertexEc");
+		
 		vertexShaderMain+="\
 				/* Use standard vertex position: */\n\
 				gl_Position=ftransform();\n\
@@ -349,17 +354,38 @@ void PointBasedLightingShader::compileShader(void)
 		throw Misc::makeStdErr(__PRETTY_FUNCTION__,"Error \"%s\" while linking shader program",linkLogBuffer);
 		}
 	
+	/* Retrieve the locations of the shader's uniform variables: */
+	switch(distPrimitiveType)
+		{
+		case DistPoint:
+			distCenterLocation=glGetUniformLocationARB(programObject,"distCenter");
+			distOffsetLocation=glGetUniformLocationARB(programObject,"distOffset");
+			distScaleLocation=glGetUniformLocationARB(programObject,"distScale");
+			distMapLocation=glGetUniformLocationARB(programObject,"distMap");
+			break;
+		
+		case DistLine:
+			distCenterLocation=glGetUniformLocationARB(programObject,"distCenter");
+			distAxisLocation=glGetUniformLocationARB(programObject,"distAxis");
+			distOffsetLocation=glGetUniformLocationARB(programObject,"distOffset");
+			distScaleLocation=glGetUniformLocationARB(programObject,"distScale");
+			distMapLocation=glGetUniformLocationARB(programObject,"distMap");
+			break;
+		
+		case DistPlane:
+			distPlaneLocation=glGetUniformLocationARB(programObject,"distPlane");
+			distScaleLocation=glGetUniformLocationARB(programObject,"distScale");
+			distMapLocation=glGetUniformLocationARB(programObject,"distMap");
+			break;
+		
+		default:
+			;
+		}
+	
 	if(useSplatting)
 		{
 		/* Get the locations of the uniform variables: */
 		surfelSizeLocation=glGetUniformLocationARB(programObject,"surfelSize");
-		}
-	
-	if(usePlaneDistance)
-		{
-		/* Get the locations of the uniform variables: */
-		planeDistancePlaneLocation=glGetUniformLocationARB(programObject,"planeDistancePlane");
-		planeDistanceMapLocation=glGetUniformLocationARB(programObject,"planeDistanceMap");
 		}
 	}
 
@@ -369,7 +395,7 @@ PointBasedLightingShader::PointBasedLightingShader(GLContextData& sContextData)
 	 haveGeometryShaders(false),
 	 lightStateVersion(0),clipPlaneStateVersion(0),shaderSettingsVersion(0),
 	 settingsVersion(1),
-	 usePlaneDistance(false),
+	 distPrimitiveType(DistNone),
 	 usePointColors(false),
 	 useSplatting(false),
 	 vertexShader(0),fragmentShader(0),geometryShader(0),programObject(0),geometryShaderAttached(false)
@@ -417,14 +443,56 @@ PointBasedLightingShader::~PointBasedLightingShader(void)
 	glDeleteObjectARB(fragmentShader);
 	}
 
-void PointBasedLightingShader::setUsePlaneDistance(bool newUsePlaneDistance)
+void PointBasedLightingShader::setDistancePrimitive(Primitive* newDistancePrimitive)
 	{
-	if(usePlaneDistance!=newUsePlaneDistance)
+	/* Determine the type of primitive and extract its distance calculation parameters: */
+	PlanePrimitive* planePrim=dynamic_cast<PlanePrimitive*>(newDistancePrimitive);	
+	if(planePrim!=0)
 		{
-		/* Update the state: */
-		usePlaneDistance=newUsePlaneDistance;
-		++settingsVersion;
+		/* Extract the primitive's plane equation: */
+		distPlane=planePrim->getPlane();
+		distPlane.normalize();
+		
+		setDistPrimitiveType(DistPlane);
+		return;
 		}
+	
+	LinePrimitive* linePrim=dynamic_cast<LinePrimitive*>(newDistancePrimitive);
+	if(linePrim!=0)
+		{
+		/* Extract the primitive's line equation: */
+		distCenter=linePrim->getCenter();
+		distAxis=linePrim->getAxis();
+		
+		/* Check if the primitive is a cylinder primitive and extract its radius if so: */
+		CylinderPrimitive* cylinderPrim=dynamic_cast<CylinderPrimitive*>(newDistancePrimitive);
+		distOffset=cylinderPrim!=0?cylinderPrim->getRadius():Primitive::Scalar(0);
+		
+		setDistPrimitiveType(DistLine);
+		return;
+		}
+	
+	PointPrimitive* pointPrim=dynamic_cast<PointPrimitive*>(newDistancePrimitive);
+	if(pointPrim!=0)
+		{
+		/* Extract the primitive's point equation: */
+		distCenter=pointPrim->getPoint();
+		
+		/* Check if the primitive is a sphere primitive and extract its radius if so: */
+		SpherePrimitive* spherePrim=dynamic_cast<SpherePrimitive*>(newDistancePrimitive);
+		distOffset=spherePrim!=0?spherePrim->getRadius():Primitive::Scalar(0);
+		
+		setDistPrimitiveType(DistPoint);
+		return;
+		}
+	
+	/* Disable primitive distance coloring: */
+	setDistPrimitiveType(DistNone);
+	}
+
+void PointBasedLightingShader::setDistanceScale(Primitive::Scalar newDistScale)
+	{
+	distScale=newDistScale;
 	}
 
 void PointBasedLightingShader::setUsePointColors(bool newUsePointColors)
@@ -485,19 +553,50 @@ void PointBasedLightingShader::setSurfelSize(float surfelSize)
 		}
 	}
 
-void PointBasedLightingShader::setDistancePlane(int textureUnit,const PointBasedLightingShader::Plane& distancePlane,double distancePlaneScale) const
+void PointBasedLightingShader::setDistanceMap(int textureUnit) const
 	{
-	if(usePlaneDistance)
+	/* Upload primitive distance calculation parameters: */
+	switch(distPrimitiveType)
 		{
-		/* Set the plane equation variable: */
-		GLfloat planeEq[4];
-		for(int i=0;i<3;++i)
-			planeEq[i]=GLfloat(distancePlane.getNormal()[i]/distancePlaneScale);
-		planeEq[3]=GLfloat(0.5-distancePlane.getOffset()/distancePlaneScale);
-		glUniformARB<4>(planeDistancePlaneLocation,1,planeEq);
+		case DistPoint:
+			{
+			Geometry::Point<GLfloat,3> dc(distCenter);
+			glUniformARB<3>(distCenterLocation,1,dc.getComponents());
+			glUniformARB(distOffsetLocation,GLfloat(distOffset));
+			glUniformARB(distScaleLocation,GLfloat(distScale));
+			glUniformARB(distMapLocation,textureUnit);
+			
+			break;
+			}
 		
-		/* Set the texture unit variable: */
-		glUniformARB(planeDistanceMapLocation,textureUnit);
+		case DistLine:
+			{
+			Geometry::Point<GLfloat,3> dc(distCenter);
+			glUniformARB<3>(distCenterLocation,1,dc.getComponents());
+			Geometry::Point<GLfloat,3> da(distAxis);
+			glUniformARB<3>(distAxisLocation,1,da.getComponents());
+			glUniformARB(distOffsetLocation,GLfloat(distOffset));
+			glUniformARB(distScaleLocation,GLfloat(distScale));
+			glUniformARB(distMapLocation,textureUnit);
+			
+			break;
+			}
+		
+		case DistPlane:
+			{
+			GLfloat dp[4];
+			for(int i=0;i<3;++i)
+				dp[i]=GLfloat(distPlane.getNormal()[i]);
+			dp[3]=GLfloat(-distPlane.getOffset());
+			glUniformARB<4>(distPlaneLocation,1,dp);
+			glUniformARB(distScaleLocation,GLfloat(distScale));
+			glUniformARB(distMapLocation,textureUnit);
+			
+			break;
+			}
+		
+		default:
+			;
 		}
 	}
 

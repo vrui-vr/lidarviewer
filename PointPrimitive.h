@@ -2,7 +2,7 @@
 PointPrimitive - Class for points extracted from point clouds by
 intersecting three plane primitives or one line primitive and one plane
 primitive.
-Copyright (c) 2008-2020 Oliver Kreylos
+Copyright (c) 2008-2026 Oliver Kreylos
 
 This file is part of the LiDAR processing and analysis package.
 
@@ -76,6 +76,12 @@ class PointPrimitive:public Primitive
 	#endif
 	virtual DragState* pick(const Point& pickPoint,Scalar& maxPickDistance2);
 	virtual void glRenderAction(GLContextData& contextData) const;
+	
+	/* New methods: */
+	const Point& getPoint(void) const // Returns the point's position
+		{
+		return point;
+		}
 	};
 
 #endif
