@@ -1,6 +1,6 @@
 /***********************************************************************
 LidarOctree - Class to render multiresolution LiDAR point sets.
-Copyright (c) 2005-2025 Oliver Kreylos
+Copyright (c) 2005-2026 Oliver Kreylos
 
 This file is part of the LiDAR processing and analysis package.
 
@@ -39,7 +39,6 @@ Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include <GL/GLFrustum.h>
 
 #include "CoarseningHeap.h"
-#include "PointBasedLightingShader.h"
 
 /**********************************
 Methods of class LidarOctree::Node:
@@ -269,7 +268,7 @@ LidarOctree::DataItem::~DataItem(void)
 Methods of class LidarOctree:
 ****************************/
 
-void LidarOctree::renderSubTree(const LidarOctree::Node* node,const LidarOctree::Frustum& frustum,PointBasedLightingShader& pbls,LidarOctree::DataItem* dataItem) const
+void LidarOctree::renderSubTree(const LidarOctree::Node* node,const LidarOctree::Frustum& frustum,PointShader::DataItem* psdi,LidarOctree::DataItem* dataItem) const
 	{
 	/* Bail out if the node is empty: */
 	if(node->numPoints==0)
@@ -366,7 +365,7 @@ void LidarOctree::renderSubTree(const LidarOctree::Node* node,const LidarOctree:
 			/* Render the node's children: */
 			// for(int i=7;i>=0;--i) // Back-to-front rendering
 			for(int i=0;i<8;++i) // Front-to-back rendering
-				renderSubTree(&node->children[i^childIndex],frustum,pbls,dataItem);
+				renderSubTree(&node->children[i^childIndex],frustum,psdi,dataItem);
 			
 			/* Done here... */
 			return;
@@ -511,9 +510,9 @@ void LidarOctree::renderSubTree(const LidarOctree::Node* node,const LidarOctree:
 	
 	/* Set this node's splat size: */
 	#if 0
-	pbls.setSurfelSize((baseSurfelSize+node->detailSize)*surfelScale); // For old fixed-size surfels
+	psdi->setSurfelScale(GLfloat((baseSurfelSize+node->detailSize)*surfelScale)); // For old fixed-size surfels
 	#else
-	pbls.setSurfelSize(baseSurfelSize*surfelScale); // For new adaptive surfels
+	psdi->setSurfelScale(GLfloat(baseSurfelSize*surfelScale)); // For new adaptive surfels
 	#endif
 	
 	/* Render this node's point set: */
@@ -1393,7 +1392,7 @@ void LidarOctree::startRenderPass(void)
 	// std::cout<<numCachedNodes<<"   ";
 	}
 
-void LidarOctree::glRenderAction(const LidarOctree::Frustum& frustum,PointBasedLightingShader& pbls,GLContextData& contextData) const
+void LidarOctree::glRenderAction(const LidarOctree::Frustum& frustum,PointShader::DataItem* psdi,GLContextData& contextData) const
 	{
 	/* Retrieve the context data item: */
 	DataItem* dataItem=contextData.retrieveDataItem<DataItem>(this);
@@ -1420,7 +1419,7 @@ void LidarOctree::glRenderAction(const LidarOctree::Frustum& frustum,PointBasedL
 	dataItem->numCacheBypasses=0;
 	dataItem->numRenderedPoints=0;
 	dataItem->numBypassedPoints=0;
-	renderSubTree(&root,frustum,pbls,dataItem);
+	renderSubTree(&root,frustum,psdi,dataItem);
 	
 	/* Reset OpenGL state: */
 	#if 0

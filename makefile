@@ -1,7 +1,7 @@
 ########################################################################
 # Makefile for LiDAR Viewer, a visualization and analysis application
 # for large 3D point cloud data.
-# Copyright (c) 2004-2025 Oliver Kreylos
+# Copyright (c) 2004-2026 Oliver Kreylos
 #
 # This file is part of the WhyTools Build Environment.
 # 
@@ -278,7 +278,6 @@ LIDARVIEWER_SOURCES = LidarOctree.cpp \
                       PlanePrimitive.cpp \
                       BruntonPrimitive.cpp \
                       PrimitiveDraggerTool.cpp \
-                      SceneGraph.cpp \
                       LidarProcessOctree.cpp \
                       LoadPointSet.cpp \
                       LidarViewer.cpp
@@ -289,7 +288,6 @@ $(EXEDIR)/LidarViewer: PACKAGES += MYVRUI MYSCENEGRAPH MYGLMOTIF MYGLGEOMETRY MY
 ifneq ($(HAVE_COLLABORATION),0)
   $(EXEDIR)/LidarViewer: PACKAGES += MYCOLLABORATION2CLIENT
 endif
-# $(EXEDIR)/LidarViewer: CFLAGS += -DVISUALIZE_WATER
 $(EXEDIR)/LidarViewer: $(LIDARVIEWER_SOURCES:%.cpp=$(OBJDIR)/%.o)
 .PHONY: LidarViewer
 LidarViewer: $(EXEDIR)/LidarViewer

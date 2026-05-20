@@ -1,7 +1,7 @@
 /***********************************************************************
 BruntonPrimitive - Class for planes extracted from point clouds, with
 additional direct visualization of strike and dip angles.
-Copyright (c) 2009-2021 Oliver Kreylos
+Copyright (c) 2009-2026 Oliver Kreylos
 
 This file is part of the LiDAR processing and analysis package.
 
@@ -35,8 +35,6 @@ Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include <SceneGraph/FontStyleNode.h>
 #include <SceneGraph/TextNode.h>
 #include <SceneGraph/ShapeNode.h>
-
-#include "SceneGraph.h"
 
 /*****************************************
 Static elements of class BruntonPrimitive:
@@ -72,8 +70,12 @@ BruntonPrimitive::BruntonPrimitive(const LidarOctree* octree,const Primitive::Ve
 
 BruntonPrimitive::~BruntonPrimitive(void)
 	{
+	#if 0
+	
 	/* Remove the brunton root node from the scene graph: */
 	getSceneGraphRoot().removeChild(*root);
+	
+	#endif
 	}
 
 #if USE_COLLABORATION
@@ -104,6 +106,8 @@ DataType::TypeID BruntonPrimitive::getType(void) const
 
 void BruntonPrimitive::buildBrunton(void)
 	{
+	#if 0
+	
 	/* Create the root node: */
 	SceneGraph::TransformNode* rootT=new SceneGraph::TransformNode;
 	root=rootT;
@@ -282,4 +286,6 @@ void BruntonPrimitive::buildBrunton(void)
 	t3->update();
 	
 	rootT->update();
+	
+	#endif
 	}

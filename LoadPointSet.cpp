@@ -1,7 +1,7 @@
 /***********************************************************************
 LoadPointSet - Helper function to load a 2D point set into LiDAR Viewer
 by elevating the points to the implicit LiDAR point cloud surface.
-Copyright (c) 2010-2021 Oliver Kreylos
+Copyright (c) 2010-2026 Oliver Kreylos
 
 This file is part of the LiDAR processing and analysis package.
 
@@ -33,10 +33,11 @@ Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 
 #include "LidarProcessOctree.h"
 #include "LidarElevationSampler.h"
-#include "SceneGraph.h"
 
 void loadPointSet(const char* lidarFileName,unsigned int memCacheSize,IO::FilePtr pointFile,Scalar filterRadius,int numLobes,const Vector& pointOffset)
 	{
+	#if 0
+	
 	/* Create a color and coordinate node to receive points: */
 	SceneGraph::ColorNode* color=new SceneGraph::ColorNode;
 	SceneGraph::CoordinateNode* coord=new SceneGraph::CoordinateNode;
@@ -130,4 +131,6 @@ void loadPointSet(const char* lidarFileName,unsigned int memCacheSize,IO::FilePt
 	
 	color->update();
 	coord->update();
+	
+	#endif
 	}

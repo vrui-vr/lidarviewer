@@ -1,6 +1,6 @@
 /***********************************************************************
 LidarViewer - Viewer program for multiresolution LiDAR data.
-Copyright (c) 2005-2025 Oliver Kreylos
+Copyright (c) 2005-2026 Oliver Kreylos
 
 This file is part of the LiDAR processing and analysis package.
 
@@ -34,9 +34,6 @@ Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include <GL/gl.h>
 #include <GL/GLMaterial.h>
 #include <GL/GLObject.h>
-#ifdef LIDARVIEWER_VISUALIZE_WATER
-#include <GL/Extensions/GLARBShaderObjects.h>
-#endif
 #include <GLMotif/RadioBox.h>
 #include <GLMotif/ToggleButton.h>
 #include <GLMotif/TextFieldSlider.h>
@@ -55,7 +52,7 @@ Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 
 #include "LidarTypes.h"
 #include "Primitive.h"
-#include "PointBasedLightingShader.h"
+#include "PointShader.h"
 
 /* Forward declarations: */
 namespace Cluster {
@@ -117,9 +114,6 @@ class LidarViewer:public Vrui::Application,public Vrui::TransparentObject,public
 		bool useTexturePlane; // Flag whether to use automatically generated texture coordinates to visualize point distance from a plane
 		GPlane texturePlane; // Plane equation of the texture-generating plane
 		double texturePlaneScale; // Scale factor for texture plane distances
-		#ifdef LIDARVIEWER_VISUALIZE_WATER
-		double texturePlaneOffset; // Additional offset for texture plane distances
-		#endif
 		double planeDistanceExaggeration; // Exaggeration factor for distances orthogonal to the texture plane
 		
 		/* Constructors and destructors: */
@@ -131,11 +125,6 @@ class LidarViewer:public Vrui::Application,public Vrui::TransparentObject,public
 		/* Elements: */
 		public:
 		GLuint influenceSphereDisplayListId; // ID of display list to render transparent spheres
-		GLuint planeColorMapTextureId; // Texture object ID of texture plane color map
-		PointBasedLightingShader pbls; // Shader for point-based lighting
-		#ifdef LIDARVIEWER_VISUALIZE_WATER
-		GLhandleARB waterShader; // Shader to generate a water-like texture on-the-fly
-		#endif
 		
 		/* Constructors and destructors: */
 		DataItem(GLContextData& contextData);
@@ -154,6 +143,7 @@ class LidarViewer:public Vrui::Application,public Vrui::TransparentObject,public
 	Scalar fncWeight; // Weight factor for focus+context LOD adjustment
 	float pointSize; // The pixel size used to render LiDAR points
 	RenderSettings renderSettings; // Environment-independent rendering settings
+	PointShader pointShader; // Shader to render point sets
 	SceneGraph::DOGTransformNodePointer sceneGraphRoot; // Common root node for additional scene graphs
 	SceneGraph::SceneGraphList sceneGraphList; // Dynamic list of additionally loaded scene graphs
 	#if USE_COLLABORATION

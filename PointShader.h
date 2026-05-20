@@ -41,10 +41,13 @@ class PointShader:public GLObject
 		DistNone,DistPoint,DistLine,DistPlane
 		};
 	
+	public:
 	struct DataItem:public GLObject::DataItem	
 		{
+		friend class PointShader;
+		
 		/* Elements: */
-		public:
+		private:
 		bool haveGeometryShaders; // Flag if the local OpenGL supports geometry shaders
 		bool correctGamma; // Flag whether incoming point colors need to be gamma-corrected
 		GLhandleARB vertexShader,fragmentShader; // Handle for the vertex and fragment shaders
@@ -66,6 +69,10 @@ class PointShader:public GLObject
 		/* Constructors and destructors: */
 		DataItem(bool sCorrectGamma);
 		virtual ~DataItem(void);
+		
+		/* Methods: */
+		public:
+		void setSurfelScale(GLfloat surfelScale); // Uploads the given surfel scale factor to an enabled point rendering shader
 		};
 	
 	public:
@@ -103,8 +110,8 @@ class PointShader:public GLObject
 	void setUsePointColors(bool newUsePointColors); // Sets the point coloring flag
 	void setUseSurfels(bool newUseSurfels); // Sets the surfel rendering flag
 	void setSurfelScale(Primitive::Scalar newSurfelScale); // Sets the scale factor for surfel radii
-	void enable(GLContextData& contextData) const; // Enables the point rendering shader in the given OpenGL context
-	void disable(GLContextData& contextData) const; // Disables the point rendering shader in the given OpenGL context
+	DataItem* enable(GLContextData& contextData) const; // Enables the point rendering shader in the given OpenGL context; returns a context data item to control the enabled shader
+	void disable(DataItem* dataItem) const; // Disables the point rendering shader controlled through the given context data item
 	};
 
 #endif

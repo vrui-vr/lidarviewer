@@ -29,6 +29,7 @@ Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include <Misc/PrintInteger.h>
 #include <Misc/StdError.h>
 #include <GL/gl.h>
+#include <GL/GLColor.h>
 #include <GL/GLLightTracker.h>
 #include <GL/GLClipPlaneTracker.h>
 #include <GL/GLContext.h>
@@ -98,6 +99,12 @@ PointShader::DataItem::~DataItem(void)
 	glDeleteTextures(1,&distMapTexture);
 	}
 
+void PointShader::DataItem::setSurfelScale(GLfloat surfelScale)
+	{
+	if(surfelScaleLocation>=0)
+		glUniformARB(surfelScaleLocation,surfelScale);
+	}
+
 /****************************
 Methods of class PointShader:
 ****************************/
@@ -123,10 +130,20 @@ void PointShader::buildShader(GLContextData& contextData,PointShader::DataItem* 
 	/* Create the main vertex shader starting boilerplate: */
 	vertexShaderMain+="\
 		void main()\n\
-			{\n\
+			{\n";
+	
+	/* Check if the shader requires the vertex position in eye coordinates: */
+	bool haveClipPlanes=cpt.getNumEnabledClipPlanes()>0;
+	bool useSurfelsHere=useSurfels&&dataItem->haveGeometryShaders;
+	if(useLighting||useSurfelsHere||haveClipPlanes)
+		vertexShaderMain+="\
 			/* Compute the vertex position in eye coordinates: */\n\
 			vec4 vertexEc=gl_ModelViewMatrix*gl_Vertex;\n\
-			\n\
+			\n";
+	
+	/* Check if the shader requires the vertex normal in eye coordinates: */
+	if(useLighting||useSurfelsHere)
+		vertexShaderMain+="\
 			/* Compute the normal vector in eye coordinates: */\n\
 			vec3 normalEc=normalize(gl_NormalMatrix*gl_Normal);\n\
 			\n\
@@ -134,7 +151,14 @@ void PointShader::buildShader(GLContextData& contextData,PointShader::DataItem* 
 			normalEc=faceforward(normalEc,normalEc,vertexEc.xyz);\n\
 			\n";
 	
-	/* Determine the point's material properties: */
+	/* Insert code to calculate the vertex' position relative to all user-specified clipping planes if needed: */
+	if(haveClipPlanes&&!useSurfelsHere)
+		{
+		vertexShaderMain+=cpt.createCalcClipDistances("vertexEc");
+		vertexShaderMain+="\n";
+		}
+	
+	/* Determine the point's color: */
 	if(distPrimitiveType!=DistNone)
 		{
 		switch(distPrimitiveType)
@@ -147,8 +171,7 @@ void PointShader::buildShader(GLContextData& contextData,PointShader::DataItem* 
 				
 				vertexShaderMain+="\
 					/* Calculate the distance from the primitive: */\n\
-					float dist=(length(gl_Vertex.xyz-distCenter)-distOffset)*distScale;\n\
-					\n";
+					float dist=(length(gl_Vertex.xyz-distCenter)-distOffset)*distScale;\n";
 				
 				break;
 			
@@ -161,8 +184,7 @@ void PointShader::buildShader(GLContextData& contextData,PointShader::DataItem* 
 				
 				vertexShaderMain+="\
 					/* Calculate the distance from the primitive: */\n\
-					float dist=(length(cross(gl_Vertex.xyz-distCenter,distAxis))-distOffset)*distScale;\n\
-					\n";
+					float dist=(length(cross(gl_Vertex.xyz-distCenter,distAxis))-distOffset)*distScale;\n";
 				
 				break;
 			
@@ -173,8 +195,7 @@ void PointShader::buildShader(GLContextData& contextData,PointShader::DataItem* 
 				
 				vertexShaderMain+="\
 					/* Calculate the distance from the primitive: */\n\
-					float dist=dot(gl_Vertex,distPlane)*distScale;\n\
-					\n";
+					float dist=dot(gl_Vertex,distPlane)*distScale;\n";
 				
 				break;
 			
@@ -187,6 +208,7 @@ void PointShader::buildShader(GLContextData& contextData,PointShader::DataItem* 
 			uniform sampler1D distMap;\n";
 		
 		vertexShaderMain+="\
+			\n\
 			/* Get the material properties from the primitive distance texture: */\n\
 			vec4 ambient=texture1D(distMap,dist+0.5);\n\
 			vec4 diffuse=ambient;\n";
@@ -217,44 +239,54 @@ void PointShader::buildShader(GLContextData& contextData,PointShader::DataItem* 
 			vec4 diffuse=gl_FrontMaterial.diffuse;\n";
 		}
 	
-	/* Assign specular material properties: */
-	vertexShaderMain+="\
+	if(useLighting)
+		{
+		/* Assign specular material properties: */
+		vertexShaderMain+="\
 			vec4 specular=gl_FrontMaterial.specular;\n\
 			float shininess=gl_FrontMaterial.shininess;\n\
 			\n";
-	
-	/* Continue the main vertex shader: */
-	vertexShaderMain+="\
+		
+		/* Start the lighting calculation: */
+		vertexShaderMain+="\
 			/* Calculate global ambient light term: */\n\
 			vec4 ambientDiffuseAccum=gl_LightModel.ambient*ambient;\n\
 			vec4 specularAccum=vec4(0.0,0.0,0.0,0.0);\n\
 			\n\
 			/* Accumulate all enabled light sources: */\n";
-	
-	/* Create light application functions for all enabled light sources: */
-	for(int lightIndex=0;lightIndex<lt.getMaxNumLights();++lightIndex)
-		if(lt.getLightState(lightIndex).isEnabled())
-			{
-			/* Create the light accumulation function: */
-			vertexShaderFunctions+=lt.createAccumulateLightFunction(lightIndex);
-			
-			/* Call the light application function from the shader's main function: */
-			vertexShaderMain+="\
-				accumulateLight";
-			char liBuffer[12];
-			vertexShaderMain.append(Misc::print(lightIndex,liBuffer+11));
-			vertexShaderMain+="(vertexEc,normalEc,ambient,diffuse,specular,shininess,ambientDiffuseAccum,specularAccum);\n";
-			}
-	
-	/* Continue the main vertex shader: */
-	vertexShaderMain+="\
+		
+		/* Create light application functions for all enabled light sources: */
+		for(int lightIndex=0;lightIndex<lt.getMaxNumLights();++lightIndex)
+			if(lt.getLightState(lightIndex).isEnabled())
+				{
+				/* Create the light accumulation function: */
+				vertexShaderFunctions+=lt.createAccumulateLightFunction(lightIndex);
+				
+				/* Call the light application function from the shader's main function: */
+				vertexShaderMain+="\
+					accumulateLight";
+				char liBuffer[12];
+				vertexShaderMain.append(Misc::print(lightIndex,liBuffer+11));
+				vertexShaderMain+="(vertexEc,normalEc,ambient,diffuse,specular,shininess,ambientDiffuseAccum,specularAccum);\n";
+				}
+		
+		/* Finish the lighting calculation: */
+		vertexShaderMain+="\
 			\n\
 			/* Compute final vertex color: */\n\
 			gl_FrontColor=ambientDiffuseAccum+specularAccum;\n\
 			\n";
+		}
+	else
+		{
+		vertexShaderMain+="\
+			\n\
+			/* Assign the ambient color: */\n\
+			gl_FrontColor=ambient;\n\
+			\n";
+		}
 	
-	/* Finish the main vertex shader: */
-	if(useSurfels&&dataItem->haveGeometryShaders)
+	if(useSurfelsHere)
 		{
 		/* Create the surfel rendering varyings: */
 		vertexShaderDefines+="\
@@ -263,30 +295,27 @@ void PointShader::buildShader(GLContextData& contextData,PointShader::DataItem* 
 			\n";
 		
 		vertexShaderMain+="\
-				/* Pass normal vector to geometry shader: */\n\
-				normal=normalEc;\n\
-				splatSize=length(gl_Normal);\n\
-				\n\
-				/* Pass eye coordinate vertex position to geometry shader: */\n\
-				gl_Position=vertexEc;\n\
-				}\n";
+			/* Pass normal vector to geometry shader: */\n\
+			normal=normalEc;\n\
+			splatSize=length(gl_Normal);\n\
+			\n\
+			/* Pass eye coordinate vertex position to geometry shader: */\n\
+			gl_Position=vertexEc;\n\
+			}\n";
 		}
 	else
 		{
-		/* Insert code to calculate the vertex' position relative to all user-specified clipping planes: */
-		vertexShaderMain+=cpt.createCalcClipDistances("vertexEc");
-		
 		vertexShaderMain+="\
-				/* Use standard vertex position: */\n\
-				gl_Position=ftransform();\n\
-				}\n";
+			/* Use standard vertex position: */\n\
+			gl_Position=ftransform();\n\
+			}\n";
 		}
 	
 	/* Compile the vertex shader: */
 	std::string vertexShaderSource=vertexShaderDefines+vertexShaderFunctions+vertexShaderMain;
 	glCompileShaderFromString(dataItem->vertexShader,vertexShaderSource.c_str());
 	
-	if(useSurfels&&dataItem->haveGeometryShaders)
+	if(useSurfelsHere)
 		{
 		if(!dataItem->geometryShaderAttached)
 			{
@@ -437,10 +466,15 @@ void PointShader::buildShader(GLContextData& contextData,PointShader::DataItem* 
 			;
 		}
 	
-	if(useSurfels&&dataItem->haveGeometryShaders)
+	if(useSurfelsHere)
 		{
 		/* Get the locations of the uniform variables: */
 		dataItem->surfelScaleLocation=glGetUniformLocationARB(dataItem->programObject,"surfelScale");
+		}
+	else
+		{
+		/* Disable surfels: */
+		dataItem->surfelScaleLocation=-1;
 		}
 	
 	/* Mark the shader as up-to-date: */
@@ -451,7 +485,7 @@ void PointShader::buildShader(GLContextData& contextData,PointShader::DataItem* 
 
 PointShader::PointShader(void)
 	:distPrimitiveType(DistNone),
-	 useLighting(false),usePointColors(false),useSurfels(false),surfelScale(1),
+	 useLighting(false),usePointColors(true),useSurfels(false),surfelScale(1),
 	 settingsVersion(1)
 	{
 	}
@@ -500,7 +534,7 @@ void PointShader::initContext(GLContextData& contextData) const
 	#endif
 	
 	/* Create the color map texture image: */
-	glBindTexture(GL_TEXTURE_1D,dataItem->distTextureMap);
+	glBindTexture(GL_TEXTURE_1D,dataItem->distMapTexture);
 	glTexParameteri(GL_TEXTURE_1D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_1D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_1D,GL_TEXTURE_BASE_LEVEL,0);
@@ -600,7 +634,7 @@ void PointShader::setSurfelScale(Primitive::Scalar newSurfelScale)
 	surfelScale=newSurfelScale;
 	}
 
-void PointShader::enable(GLContextData& contextData) const
+PointShader::DataItem* PointShader::enable(GLContextData& contextData) const
 	{
 	/* Retrieve the context data item: */
 	DataItem* dataItem=contextData.retrieveDataItem<DataItem>(this);
@@ -661,7 +695,7 @@ void PointShader::enable(GLContextData& contextData) const
 			{
 			/* Bind the distance color map texture: */
 			glActiveTextureARB(GL_TEXTURE0_ARB);
-			glBindTexture(GL_TEXTURE_1D,dataItem->distTextureMap);
+			glBindTexture(GL_TEXTURE_1D,dataItem->distMapTexture);
 			glUniformARB(dataItem->distMapLocation,0);
 			}
 		
@@ -671,15 +705,19 @@ void PointShader::enable(GLContextData& contextData) const
 	catch(const std::runtime_error& err)
 		{
 		std::cerr<<"Disabling point rendering shader due to exception "<<err.what()<<std::endl;
+		
+		return 0;
 		}
+	
+	return dataItem;
 	}
 
-void PointShader::disable(GLContextData& contextData) const
+void PointShader::disable(PointShader::DataItem* dataItem) const
 	{
 	/* Disable all shader programs: */
 	glUseProgramObjectARB(0);
 	
 	/* Protect the distance color map texture: */
 	glActiveTextureARB(GL_TEXTURE0_ARB);
-	glBindTexture(GL_TEXTURE_1D,dataItem->distTextureMap);
+	glBindTexture(GL_TEXTURE_1D,0);
 	}

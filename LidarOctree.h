@@ -1,6 +1,6 @@
 /***********************************************************************
 LidarOctree - Class to render multiresolution LiDAR point sets.
-Copyright (c) 2005-2025 Oliver Kreylos
+Copyright (c) 2005-2026 Oliver Kreylos
 
 This file is part of the LiDAR processing and analysis package.
 
@@ -39,6 +39,7 @@ Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include "LidarTypes.h"
 #include "Cube.h"
 #include "LidarFile.h"
+#include "PointShader.h"
 
 /* Flag whether to shift the center of the octree's domain to the coordinate system's origin: */
 #define RECENTER_OCTREE 1
@@ -52,7 +53,6 @@ template <class ScalarParam>
 class GLFrustum;
 template <class NodeParam>
 class CoarseningHeap;
-class PointBasedLightingShader;
 
 class LidarOctree:public GLObject
 	{
@@ -263,7 +263,7 @@ class LidarOctree:public GLObject
 	mutable CoarseningHeap<Node>* coarseningHeap; // Heap of nodes that are candidates for coarsening
 	
 	/* Private methods: */
-	void renderSubTree(const Node* node,const Frustum& frustum,PointBasedLightingShader& pbls,DataItem* dataItem) const;
+	void renderSubTree(const Node* node,const Frustum& frustum,PointShader::DataItem* psdi,DataItem* dataItem) const;
 	void interactWithSubTree(Node* node,const Interactor& interactor); // Prepares a subtree for interaction with an interactor
 	template <class VertexParam>
 	bool selectPoint(Node* node,unsigned int pointIndex); // Selects the given point in the given node; returns true if selection changed
@@ -315,7 +315,7 @@ class LidarOctree:public GLObject
 	void setFocusAndContext(const Point& newFncCenter,Scalar newFncRadius,Scalar newFncWeight); // Adjusts focus+context LOD adjustment parameters
 	void setBaseSurfelSize(float newBaseSurfelSize,float newSurfelScale); // Sets the splat size for leaf nodes
 	void startRenderPass(void); // Starts the next rendering pass of the point octree
-	void glRenderAction(const Frustum& frustum,PointBasedLightingShader& pbls,GLContextData& contextData) const;
+	void glRenderAction(const Frustum& frustum,PointShader::DataItem* psdi,GLContextData& contextData) const;
 	void intersectCone(ConeIntersection& cone) const; // Intersects a cone with all points in the current octree
 	void interact(const Interactor& interactor); // Prepares an octree for interaction with an interactor
 	void selectPoints(const Interactor& interactor); // Selects all points inside the interactor's region of influence
