@@ -166,8 +166,8 @@ void PointShader::buildShader(GLContextData& contextData,PointShader::DataItem* 
 			case DistPoint:
 				vertexShaderDefines+="\
 					uniform vec3 distCenter;\n\
-					uniform float distOffset\n\
-					uniform float distScale\n";
+					uniform float distOffset;\n\
+					uniform float distScale;\n";
 				
 				vertexShaderMain+="\
 					/* Calculate the distance from the primitive: */\n\
@@ -179,8 +179,8 @@ void PointShader::buildShader(GLContextData& contextData,PointShader::DataItem* 
 				vertexShaderDefines+="\
 					uniform vec3 distCenter;\n\
 					uniform vec3 distAxis;\n\
-					uniform float distOffset\n\
-					uniform float distScale\n";
+					uniform float distOffset;\n\
+					uniform float distScale;\n";
 				
 				vertexShaderMain+="\
 					/* Calculate the distance from the primitive: */\n\
@@ -191,7 +191,7 @@ void PointShader::buildShader(GLContextData& contextData,PointShader::DataItem* 
 			case DistPlane:
 				vertexShaderDefines+="\
 					uniform vec4 distPlane;\n\
-					uniform float distScale\n";
+					uniform float distScale;\n";
 				
 				vertexShaderMain+="\
 					/* Calculate the distance from the primitive: */\n\
