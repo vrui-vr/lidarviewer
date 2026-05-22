@@ -213,6 +213,7 @@ class LidarViewer:public Vrui::Application,public Vrui::TransparentObject,public
 		Vrui::requestUpdate();
 		};
 	void updateTexturePlane(const PlanePrimitive* plane); // Updates the texture generation plane based on the given plane primitive
+	void setPickedPrimitive(int newPickedPrimitive); // Sets the index of the last picked primitive
 	template <class PrimitiveParam>
 	PrimitiveParam* extractPrimitive(void); // Extracts a primitive of some type from the octree
 	int addPrimitive(Primitive* newPrimitive); // Adds a primitive to the list; returns the index of the newly added primitive

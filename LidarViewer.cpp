@@ -515,6 +515,7 @@ void LidarViewer::renderSettingsChangedCallback(Misc::CallbackData* cbData)
 	pointShader.setUsePointColors(renderSettings.usePointColors);
 	pointShader.setUseSurfels(renderSettings.useSplatting);
 	pointShader.setSurfelScale(renderSettings.splatSize);
+	pointShader.setDistanceScale(Primitive::Scalar(1)/renderSettings.texturePlaneScale);
 	}
 
 void LidarViewer::sunSettingsChangedCallback(Misc::CallbackData* cbData)
@@ -1003,6 +1004,22 @@ void LidarViewer::updateTexturePlane(const PlanePrimitive* plane)
 	#endif
 	}
 
+void LidarViewer::setPickedPrimitive(int newPickedPrimitive)
+	{
+	if(newPickedPrimitive>=0)
+		{
+		/* Enable primitive distance visualization: */
+		pointShader.setDistancePrimitive(primitives[newPickedPrimitive]);
+		}
+	else
+		{
+		/* Disable primitive distance visualization: */
+		pointShader.setDistancePrimitive(0);
+		}
+	
+	lastPickedPrimitive=newPickedPrimitive;
+	}
+
 template <class PrimitiveParam>
 inline PrimitiveParam* LidarViewer::extractPrimitive(void)
 	{
@@ -1055,7 +1072,7 @@ inline PrimitiveParam* LidarViewer::extractPrimitive(void)
 	if(primitive!=0)
 		{
 		/* Store the primitive: */
-		lastPickedPrimitive=addPrimitive(primitive);
+		setPickedPrimitive(addPrimitive(primitive));
 		
 		#if USE_COLLABORATION
 		if(koinonia!=0)
@@ -1103,7 +1120,7 @@ Primitive::DragState* LidarViewer::pickPrimitive(const Primitive::Point& pickPos
 	if(pickedPrimitiveIndex>=0)
 		{
 		/* Remember the picked primitive: */
-		lastPickedPrimitive=pickedPrimitiveIndex;
+		setPickedPrimitive(pickedPrimitiveIndex);
 		}
 	
 	/* Return the drag state: */
@@ -1601,9 +1618,6 @@ void LidarViewer::frame(void)
 
 void LidarViewer::display(GLContextData& contextData) const
 	{
-	/* Retrieve context entry: */
-	DataItem* dataItem=contextData.retrieveDataItem<DataItem>(this);
-	
 	/* Set up basic OpenGL state: */
 	glPushAttrib(GL_ENABLE_BIT|GL_LIGHTING_BIT|GL_LINE_BIT|GL_POINT_BIT|GL_TEXTURE_BIT);
 	
@@ -1868,7 +1882,7 @@ void LidarViewer::intersectPrimitivesCallback(Misc::CallbackData* cbData)
 	if(primitive!=0)
 		{
 		/* Store the primitive: */
-		lastPickedPrimitive=addPrimitive(primitive);
+		setPickedPrimitive(addPrimitive(primitive));
 		
 		#if USE_COLLABORATION
 		if(koinonia!=0)
@@ -1947,7 +1961,7 @@ void LidarViewer::loadPrimitivesOKCallback(GLMotif::FileSelectionDialog::OKCallb
 				}
 			
 			/* Store the primitive: */
-			lastPickedPrimitive=addPrimitive(newPrimitive);
+			setPickedPrimitive(addPrimitive(newPrimitive));
 			
 			#if USE_COLLABORATION
 			if(koinonia!=0)
@@ -2078,7 +2092,7 @@ void LidarViewer::deleteSelectedPrimitivesCallback(Misc::CallbackData* cbData)
 	for(int i=primitives.size()-1;i>=0;--i)
 		if(primitiveSelectedFlags[i])
 			deletePrimitive(i);
-	lastPickedPrimitive=-1;
+	setPickedPrimitive(-1);
 	}
 
 void LidarViewer::clearPrimitivesCallback(Misc::CallbackData* cbData)
@@ -2098,7 +2112,7 @@ void LidarViewer::clearPrimitivesCallback(Misc::CallbackData* cbData)
 		}
 	primitives.clear();
 	primitiveSelectedFlags.clear();
-	lastPickedPrimitive=-1;
+	setPickedPrimitive(-1);
 	}
 
 void LidarViewer::showOctreeDialogCallback(Misc::CallbackData* cbData)
