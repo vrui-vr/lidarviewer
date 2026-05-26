@@ -80,8 +80,6 @@ class LidarViewer:public Vrui::Application,public Vrui::TransparentObject,public
 	{
 	/* Embedded classes: */
 	private:
-	typedef Geometry::Plane<double,3> GPlane;
-	
 	enum SelectorMode // Enumerated type for selection modes
 		{
 		Add,Subtract
@@ -102,19 +100,25 @@ class LidarViewer:public Vrui::Application,public Vrui::TransparentObject,public
 	
 	struct RenderSettings // Structure holding environment-independent rendering settings
 		{
+		/* Embedded classes: */
+		public:
+		typedef Geometry::Plane<double,3> Plane;
+		
 		/* Elements: */
 		public:
-		bool pointBasedLighting; // Flag whether points are rendered with illumination
+		int colorSource; // Source for point colors
 		GLMaterial surfaceMaterial; // Surface material properties used during illuminated rendering
-		bool usePointColors; // Flag whether to use points' colors during illuminated rendering
-		bool useSplatting; // Flag whether to use point splats when illumination is enabled
-		double splatSize; // Size of point splats in model coordinate units
+		#if USE_COLLABORATION
+		KoinoniaProtocol::ObjectID distPrimitiveId; // The Koinonia ID of the primitive used for point distance calculation
+		#endif
+		double distScale; // Scale factor for primitive distance coloring
+		bool useLighting; // Flag whether points are rendered with illumination
+		bool useSurfels; // Flag whether to render points as surface-aligned disks
+		double surfelScale; // Scale factor for surfel rendering
+		Plane exaggerationPlane; // Base plane equation for distance exaggeration
+		double exaggerationScale; // Scale factor for distance exaggeration
 		bool enableSun; // Flag whether to use a sun light source instead of all viewer's headlights
 		double sunAzimuth,sunElevation; // Azimuth and elevation angles of sun light source in degrees
-		bool useTexturePlane; // Flag whether to use automatically generated texture coordinates to visualize point distance from a plane
-		GPlane texturePlane; // Plane equation of the texture-generating plane
-		double texturePlaneScale; // Scale factor for texture plane distances
-		double planeDistanceExaggeration; // Exaggeration factor for distances orthogonal to the texture plane
 		
 		/* Constructors and destructors: */
 		RenderSettings(void); // Creates default rendering settings
@@ -212,7 +216,6 @@ class LidarViewer:public Vrui::Application,public Vrui::TransparentObject,public
 		{
 		Vrui::requestUpdate();
 		};
-	void updateTexturePlane(const PlanePrimitive* plane); // Updates the texture generation plane based on the given plane primitive
 	void setPickedPrimitive(int newPickedPrimitive); // Sets the index of the last picked primitive
 	template <class PrimitiveParam>
 	PrimitiveParam* extractPrimitive(void); // Extracts a primitive of some type from the octree

@@ -35,6 +35,14 @@ Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 class PointShader:public GLObject
 	{
 	/* Embedded classes: */
+	public:
+	enum ColorSource // Type for sources for point colors
+		{
+		Material, // Assigns point colors from the ambient OpenGL material property
+		PointSet, // Assigns point colors from the input point set's color property
+		PrimitiveDistance // Assigns point colors based on the distance from the selected primitive and a color map
+		};
+	
 	private:
 	enum DistPrimitiveType // Type for primitive distance functions
 		{
@@ -80,14 +88,15 @@ class PointShader:public GLObject
 	
 	/* Elements: */
 	private:
+	ColorSource colorSource; // The requested source for point colors
 	DistPrimitiveType distPrimitiveType; // Type of the currently active distance-coloring primitive
 	Primitive::Point distCenter; // Center point for distance calculations
 	Primitive::Vector distAxis; // Axis for line distance calculation
 	Primitive::Scalar distOffset; // Offset for point or line distance calculations
 	Plane distPlane; // Plane for distance calculations
 	Primitive::Scalar distScale; // Scale factor for distance calculation
+	ColorSource effectiveColorSource; // The effective point color source, taking into account the validity of the distance primitive
 	bool useLighting; // Flag to enable point-based lighting
-	bool usePointColors; // Flag whether the point renderer uses point colors as ambient and diffuse color
 	bool useSurfels; // Flag whether the point renderer uses surface-aligned scaled disks to render points
 	Primitive::Scalar surfelScale; // Scale factor for surfel radii
 	unsigned int settingsVersion; // Version of other shader settings
@@ -104,10 +113,10 @@ class PointShader:public GLObject
 	virtual void initContext(GLContextData& contextData) const;
 	
 	/* New methods: */
-	void setDistancePrimitive(Primitive* newDistancePrimitive); // Colors the point cloud by distance to the given primitive
+	void setColorSource(ColorSource newColorSource); // Sets the source for point colors
+	void setDistancePrimitive(Primitive* newDistancePrimitive); // Sets the primitive used for subsequent point distance calculations
 	void setDistanceScale(Primitive::Scalar newDistScale); // Sets the scale factor for distance-based coloring
 	void setUseLighting(bool newUseLighting); // Sets the lighting flag
-	void setUsePointColors(bool newUsePointColors); // Sets the point coloring flag
 	void setUseSurfels(bool newUseSurfels); // Sets the surfel rendering flag
 	void setSurfelScale(Primitive::Scalar newSurfelScale); // Sets the scale factor for surfel radii
 	DataItem* enable(GLContextData& contextData) const; // Enables the point rendering shader in the given OpenGL context; returns a context data item to control the enabled shader

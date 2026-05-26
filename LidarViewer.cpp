@@ -62,6 +62,7 @@ Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include <GLMotif/WidgetManager.h>
 #include <GLMotif/PopupMenu.h>
 #include <GLMotif/PopupWindow.h>
+#include <GLMotif/Blind.h>
 #include <GLMotif/RowColumn.h>
 #include <GLMotif/Menu.h>
 #include <GLMotif/Margin.h>
@@ -114,12 +115,16 @@ Methods of class LidarViewer::RenderSettings:
 ********************************************/
 
 LidarViewer::RenderSettings::RenderSettings(void)
-	:pointBasedLighting(false),
+	:colorSource(PointShader::PointSet),
 	 surfaceMaterial(GLMaterial::Color(0.7f,0.7f,0.7f),GLMaterial::Color(0.5f,0.5f,0.5f),24.0f),
-	 usePointColors(true),useSplatting(false),splatSize(1),
-	 enableSun(false),sunAzimuth(180),sunElevation(45),
-	 useTexturePlane(false),texturePlane(GPlane::Vector(0.0,0.0,1.0),0.0),texturePlaneScale(100.0),
-	 planeDistanceExaggeration(1.0)
+	 #if USE_COLLABORATION
+	 distPrimitiveId(0),
+	 #endif
+	 distScale(1),
+	 useLighting(false),useSurfels(false),surfelScale(1),
+	 exaggerationPlane(Plane::Vector(0,0,1),Plane::Scalar(0)),
+	 exaggerationScale(1),
+	 enableSun(false),sunAzimuth(180),sunElevation(45)
 	{
 	}
 
@@ -511,11 +516,11 @@ void LidarViewer::renderSettingsChangedCallback(Misc::CallbackData* cbData)
 	#endif
 	
 	/* Update the point rendering shader: */
-	pointShader.setUseLighting(renderSettings.pointBasedLighting);
-	pointShader.setUsePointColors(renderSettings.usePointColors);
-	pointShader.setUseSurfels(renderSettings.useSplatting);
-	pointShader.setSurfelScale(renderSettings.splatSize);
-	pointShader.setDistanceScale(Primitive::Scalar(1)/renderSettings.texturePlaneScale);
+	pointShader.setColorSource(PointShader::ColorSource(renderSettings.colorSource));
+	pointShader.setDistanceScale(Primitive::Scalar(1)/renderSettings.distScale);
+	pointShader.setUseLighting(renderSettings.useLighting);
+	pointShader.setUseSurfels(renderSettings.useSurfels);
+	pointShader.setSurfelScale(renderSettings.surfelScale);
 	}
 
 void LidarViewer::sunSettingsChangedCallback(Misc::CallbackData* cbData)
@@ -530,15 +535,15 @@ void LidarViewer::sunSettingsChangedCallback(Misc::CallbackData* cbData)
 void LidarViewer::distanceExaggerationSliderCallback(GLMotif::TextFieldSlider::ValueChangedCallbackData* cbData)
 	{
 	/* Get new plane distance exaggeration factor: */
-	renderSettings.planeDistanceExaggeration=cbData->value;
+	renderSettings.exaggerationScale=cbData->value;
 	
 	/* Update the affine coordinate transformer to reflect the new exaggeration value: */
-	Vrui::Vector tn=Vrui::Vector(renderSettings.texturePlane.getNormal());
-	Vrui::Vector fTrans=tn*(Vrui::Scalar(renderSettings.texturePlane.getOffset())/tn.sqr());
+	Vrui::Vector tn=Vrui::Vector(renderSettings.exaggerationPlane.getNormal());
+	Vrui::Vector fTrans=tn*(Vrui::Scalar(renderSettings.exaggerationPlane.getOffset())/tn.sqr());
 	Vrui::Rotation fRot=Vrui::Rotation::rotateFromTo(Vrui::Vector(0,0,1),tn);
 	Vrui::ATransform newTransform=Vrui::ATransform::translate(fTrans);
 	newTransform*=Vrui::ATransform::rotate(fRot);
-	newTransform*=Vrui::ATransform::scale(Vrui::ATransform::Scale(1.0,1.0,renderSettings.planeDistanceExaggeration));
+	newTransform*=Vrui::ATransform::scale(Vrui::ATransform::Scale(1.0,1.0,renderSettings.exaggerationScale));
 	newTransform*=Vrui::ATransform::rotate(Geometry::invert(fRot));
 	newTransform*=Vrui::ATransform::translate(-(fTrans+Vrui::Vector(offsets)));
 	coordTransform->setTransform(newTransform);
@@ -558,12 +563,12 @@ void LidarViewer::renderSettingsUpdatedCallback(KoinoniaClient* client,KoinoniaP
 	
 	/* Update the affine coordinate transformer to reflect the new exaggeration value: */
 	RenderSettings& rs=thisPtr->renderSettings;
-	Vrui::Vector tn=Vrui::Vector(rs.texturePlane.getNormal());
-	Vrui::Vector fTrans=tn*(Vrui::Scalar(rs.texturePlane.getOffset())/tn.sqr());
+	Vrui::Vector tn=Vrui::Vector(rs.exaggerationPlane.getNormal());
+	Vrui::Vector fTrans=tn*(Vrui::Scalar(rs.exaggerationPlane.getOffset())/tn.sqr());
 	Vrui::Rotation fRot=Vrui::Rotation::rotateFromTo(Vrui::Vector(0,0,1),tn);
 	Vrui::ATransform newTransform=Vrui::ATransform::translate(fTrans);
 	newTransform*=Vrui::ATransform::rotate(fRot);
-	newTransform*=Vrui::ATransform::scale(Vrui::ATransform::Scale(1.0,1.0,rs.planeDistanceExaggeration));
+	newTransform*=Vrui::ATransform::scale(Vrui::ATransform::Scale(1.0,1.0,rs.exaggerationScale));
 	newTransform*=Vrui::ATransform::rotate(Geometry::invert(fRot));
 	newTransform*=Vrui::ATransform::translate(-(fTrans+Vrui::Vector(thisPtr->offsets)));
 	thisPtr->coordTransform->setTransform(newTransform);
@@ -572,10 +577,11 @@ void LidarViewer::renderSettingsUpdatedCallback(KoinoniaClient* client,KoinoniaP
 	thisPtr->renderDialog->updateVariables();
 	
 	/* Update the point rendering shader: */
-	thisPtr->pointShader.setUseLighting(rs.pointBasedLighting);
-	thisPtr->pointShader.setUsePointColors(rs.usePointColors);
-	thisPtr->pointShader.setUseSurfels(rs.useSplatting);
-	thisPtr->pointShader.setSurfelScale(rs.splatSize);
+	thisPtr->pointShader.setColorSource(PointShader::ColorSource(rs.colorSource));
+	thisPtr->pointShader.setDistanceScale(Primitive::Scalar(1)/rs.distScale);
+	thisPtr->pointShader.setUseLighting(rs.useLighting);
+	thisPtr->pointShader.setUseSurfels(rs.useSurfels);
+	thisPtr->pointShader.setSurfelScale(rs.surfelScale);
 	}
 
 void* LidarViewer::createPrimitiveFunction(KoinoniaClient* client,KoinoniaProtocol::NamespaceID namespaceId,DataType::TypeID type,void* userData)
@@ -656,6 +662,7 @@ GLMotif::PopupWindow* LidarViewer::createRenderDialog(void)
 	renderDialog->popDownOnClose();
 	
 	GLMotif::Pager* renderPager=new GLMotif::Pager("RenderPager",renderDialog,false);
+	renderPager->setMarginWidth(ss.size*0.5f);
 	
 	/* Check if any of the octrees have normal vectors: */
 	bool haveNormalVectors=false;
@@ -665,7 +672,10 @@ GLMotif::PopupWindow* LidarViewer::createRenderDialog(void)
 	/* Create a page with LOD settings: */
 	renderPager->setNextPageName("LOD");
 	
-	GLMotif::RowColumn* lodBox=new GLMotif::RowColumn("LODBox",renderPager,false);
+	GLMotif::Margin* lodMargin=new GLMotif::Margin("LodMargin",renderPager,false);
+	lodMargin->setAlignment(GLMotif::Alignment(GLMotif::Alignment::VCENTER));
+	
+	GLMotif::RowColumn* lodBox=new GLMotif::RowColumn("LODBox",lodMargin,false);
 	lodBox->setOrientation(GLMotif::RowColumn::VERTICAL);
 	lodBox->setPacking(GLMotif::RowColumn::PACK_TIGHT);
 	lodBox->setNumMinorWidgets(2);
@@ -704,29 +714,34 @@ GLMotif::PopupWindow* LidarViewer::createRenderDialog(void)
 	
 	if(haveNormalVectors)
 		{
-		/* Create a toggle button/slider/textfield combo to control point splatting: */
-		GLMotif::ToggleButton* useSplattingToggle=new GLMotif::ToggleButton("UseSplattingToggle",lodBox,"Splat Size");
-		useSplattingToggle->setBorderWidth(0.0f);
-		useSplattingToggle->setHAlignment(GLFont::Left);
-		useSplattingToggle->track(renderSettings.useSplatting);
-		useSplattingToggle->getValueChangedCallbacks().add(this,&LidarViewer::renderSettingsChangedCallback);
+		/* Create a toggle button/slider/textfield combo to control surfel rendering: */
+		GLMotif::ToggleButton* useSurfelsToggle=new GLMotif::ToggleButton("UseSurfelsToggle",lodBox,"Surfel Scale");
+		useSurfelsToggle->setBorderWidth(0.0f);
+		useSurfelsToggle->setHAlignment(GLFont::Left);
+		useSurfelsToggle->track(renderSettings.useSurfels);
+		useSurfelsToggle->getValueChangedCallbacks().add(this,&LidarViewer::renderSettingsChangedCallback);
 		
-		GLMotif::TextFieldSlider* splatSizeSlider=new GLMotif::TextFieldSlider("SplatSizeSlider",lodBox,6,ss.fontHeight*10.0f);
-		splatSizeSlider->getTextField()->setFloatFormat(GLMotif::TextField::FIXED);
-		splatSizeSlider->getTextField()->setFieldWidth(6);
-		splatSizeSlider->getTextField()->setPrecision(3);
-		splatSizeSlider->setSliderMapping(GLMotif::TextFieldSlider::EXP10);
-		splatSizeSlider->setValueRange(0.001,1000.0,0.01);
-		splatSizeSlider->track(renderSettings.splatSize);
-		splatSizeSlider->getValueChangedCallbacks().add(this,&LidarViewer::renderSettingsChangedCallback);
+		GLMotif::TextFieldSlider* surfelScaleSlider=new GLMotif::TextFieldSlider("SurfelScaleSlider",lodBox,6,ss.fontHeight*10.0f);
+		surfelScaleSlider->getTextField()->setFloatFormat(GLMotif::TextField::FIXED);
+		surfelScaleSlider->getTextField()->setFieldWidth(6);
+		surfelScaleSlider->getTextField()->setPrecision(3);
+		surfelScaleSlider->setSliderMapping(GLMotif::TextFieldSlider::EXP10);
+		surfelScaleSlider->setValueRange(0.001,1000.0,0.01);
+		surfelScaleSlider->track(renderSettings.surfelScale);
+		surfelScaleSlider->getValueChangedCallbacks().add(this,&LidarViewer::renderSettingsChangedCallback);
 		}
 	
 	lodBox->manageChild();
 	
+	lodMargin->manageChild();
+	
 	/* Create a page with environment settings: */
 	renderPager->setNextPageName("Environment");
 	
-	GLMotif::RowColumn* environmentBox=new GLMotif::RowColumn("EnvironmentBox",renderPager,false);
+	GLMotif::Margin* environmentMargin=new GLMotif::Margin("EnvironmentMargin",renderPager,false);
+	environmentMargin->setAlignment(GLMotif::Alignment(GLMotif::Alignment::VCENTER));
+	
+	GLMotif::RowColumn* environmentBox=new GLMotif::RowColumn("EnvironmentBox",environmentMargin,false);
 	environmentBox->setOrientation(GLMotif::RowColumn::VERTICAL);
 	environmentBox->setPacking(GLMotif::RowColumn::PACK_TIGHT);
 	environmentBox->setNumMinorWidgets(2);
@@ -735,7 +750,7 @@ GLMotif::PopupWindow* LidarViewer::createRenderDialog(void)
 	new GLMotif::Label("BackgroundColorLabel",environmentBox,"Background Color");
 	
 	GLMotif::Margin* backgroundColorMargin=new GLMotif::Margin("BackgroundColorMargin",environmentBox,false);
-	backgroundColorMargin->setAlignment(GLMotif::Alignment(GLMotif::Alignment::HCENTER));
+	backgroundColorMargin->setAlignment(GLMotif::Alignment(GLMotif::Alignment::LEFT));
 	
 	GLMotif::HSVColorSelector* backgroundColorSelector=new GLMotif::HSVColorSelector("BackgroundColorSelector",backgroundColorMargin);
 	backgroundColorSelector->setCurrentColor(Vrui::getBackgroundColor());
@@ -761,12 +776,73 @@ GLMotif::PopupWindow* LidarViewer::createRenderDialog(void)
 	
 	environmentBox->manageChild();
 	
+	environmentMargin->manageChild();
+	
+	/* Create a page to select point colors and edit material properties: */
+	renderPager->setNextPageName("Materials");
+	
+	GLMotif::Margin* materialMargin=new GLMotif::Margin("EnvironmentMargin",renderPager,false);
+	materialMargin->setAlignment(GLMotif::Alignment(GLMotif::Alignment::VCENTER));
+	
+	GLMotif::RowColumn* materialBox=new GLMotif::RowColumn("MaterialBox",materialMargin,false);
+	materialBox->setOrientation(GLMotif::RowColumn::VERTICAL);
+	materialBox->setPacking(GLMotif::RowColumn::PACK_TIGHT);
+	materialBox->setNumMinorWidgets(2);
+	
+	new GLMotif::Label("ColorSourceLabel",materialBox,"Color Source");
+	
+	GLMotif::Margin* colorSourceMargin=new GLMotif::Margin("ColorSourceMargin",materialBox,false);
+	colorSourceMargin->setAlignment(GLMotif::Alignment(GLMotif::Alignment::LEFT));
+	
+	GLMotif::RadioBox* colorSource=new GLMotif::RadioBox("ColorSource",colorSourceMargin,false);
+	colorSource->setOrientation(GLMotif::RowColumn::HORIZONTAL);
+	colorSource->setPacking(GLMotif::RowColumn::PACK_TIGHT);
+	colorSource->addToggle("Material");
+	colorSource->addToggle("Point Set");
+	colorSource->addToggle("Primitive Distance");
+	colorSource->setSelectionMode(GLMotif::RadioBox::ALWAYS_ONE);
+	colorSource->track(renderSettings.colorSource);
+	colorSource->getValueChangedCallbacks().add(this,&LidarViewer::renderSettingsChangedCallback);
+	
+	colorSource->manageChild();
+	
+	colorSourceMargin->manageChild();
+	
+	new GLMotif::Label("MaterialLabel",materialBox,"Material");
+	
+	GLMotif::Margin* materialEditorMargin=new GLMotif::Margin("MaterialEditorMargin",materialBox,false);
+	materialEditorMargin->setAlignment(GLMotif::Alignment(GLMotif::Alignment::LEFT,GLMotif::Alignment::VCENTER));
+	
+	GLMotif::MaterialEditor* materialEditor=new GLMotif::MaterialEditor("MaterialEditor",materialEditorMargin);
+	materialEditor->track(renderSettings.surfaceMaterial);
+	materialEditor->getValueChangedCallbacks().add(this,&LidarViewer::renderSettingsChangedCallback);
+	
+	materialEditorMargin->manageChild();
+	
+	new GLMotif::Label("DistanceScaleLabel",materialBox,"Distance Scale");
+	
+	/* Create a slider to select the plane distance coloring scale: */
+	GLMotif::TextFieldSlider* distanceScaleSlider=new GLMotif::TextFieldSlider("DistanceScaleSlider",materialBox,8,ss.fontHeight*10.0f);
+	distanceScaleSlider->getTextField()->setFieldWidth(8);
+	distanceScaleSlider->getTextField()->setPrecision(3);
+	distanceScaleSlider->setSliderMapping(GLMotif::TextFieldSlider::EXP10);
+	distanceScaleSlider->setValueRange(0.00001,100000.0,0.1);
+	distanceScaleSlider->track(renderSettings.distScale);
+	distanceScaleSlider->getValueChangedCallbacks().add(this,&LidarViewer::renderSettingsChangedCallback);
+	
+	materialBox->manageChild();
+	
+	materialMargin->manageChild();
+	
 	if(haveNormalVectors)
 		{
 		/* Create a page with lighting settings: */
 		renderPager->setNextPageName("Lighting");
 		
-		GLMotif::RowColumn* lightingBox=new GLMotif::RowColumn("LightingBox",renderPager,false);
+		GLMotif::Margin* lightingMargin=new GLMotif::Margin("LightingMargin",renderPager,false);
+		lightingMargin->setAlignment(GLMotif::Alignment(GLMotif::Alignment::VCENTER));
+		
+		GLMotif::RowColumn* lightingBox=new GLMotif::RowColumn("LightingBox",lightingMargin,false);
 		lightingBox->setOrientation(GLMotif::RowColumn::VERTICAL);
 		lightingBox->setPacking(GLMotif::RowColumn::PACK_TIGHT);
 		lightingBox->setNumMinorWidgets(2);
@@ -775,25 +851,15 @@ GLMotif::PopupWindow* LidarViewer::createRenderDialog(void)
 		GLMotif::Margin* enableLightingMargin=new GLMotif::Margin("EnableLightingMargin",lightingBox,false);
 		enableLightingMargin->setAlignment(GLMotif::Alignment(GLMotif::Alignment::LEFT,GLMotif::Alignment::VCENTER));
 		
-		GLMotif::ToggleButton* enableLightingToggle=new GLMotif::ToggleButton("EnableLightingToggle",enableLightingMargin,"Lighting");
+		GLMotif::ToggleButton* enableLightingToggle=new GLMotif::ToggleButton("EnableLightingToggle",enableLightingMargin,"Enable Lighting");
 		enableLightingToggle->setBorderWidth(0.0f);
 		enableLightingToggle->setHAlignment(GLFont::Left);
-		enableLightingToggle->track(renderSettings.pointBasedLighting);
+		enableLightingToggle->track(renderSettings.useLighting);
 		enableLightingToggle->getValueChangedCallbacks().add(this,&LidarViewer::renderSettingsChangedCallback);
 		
 		enableLightingMargin->manageChild();
 		
-		/* Create a toggle button to enable point colors: */
-		GLMotif::Margin* usePointColorsMargin=new GLMotif::Margin("UsePointColorsMargin",lightingBox,false);
-		usePointColorsMargin->setAlignment(GLMotif::Alignment(GLMotif::Alignment::LEFT,GLMotif::Alignment::VCENTER));
-		
-		GLMotif::ToggleButton* usePointColorsToggle=new GLMotif::ToggleButton("UsePointColorsToggle",usePointColorsMargin,"Use Point Colors");
-		usePointColorsToggle->setBorderWidth(0.0f);
-		usePointColorsToggle->setHAlignment(GLFont::Left);
-		usePointColorsToggle->track(renderSettings.usePointColors);
-		usePointColorsToggle->getValueChangedCallbacks().add(this,&LidarViewer::renderSettingsChangedCallback);
-		
-		usePointColorsMargin->manageChild();
+		new GLMotif::Blind("Blind1",lightingBox);
 		
 		/* Create a toggle button to enable a fixed-position light source: */
 		GLMotif::Margin* enableSunMargin=new GLMotif::Margin("EnableSunMargin",lightingBox,false);
@@ -836,23 +902,16 @@ GLMotif::PopupWindow* LidarViewer::createRenderDialog(void)
 		
 		lightingBox->manageChild();
 		
-		/* Create a page to edit material properties: */
-		renderPager->setNextPageName("Material");
-		
-		GLMotif::Margin* materialMargin=new GLMotif::Margin("MaterialMargin",renderPager,false);
-		materialMargin->setAlignment(GLMotif::Alignment(GLMotif::Alignment::HCENTER,GLMotif::Alignment::VCENTER));
-		
-		GLMotif::MaterialEditor* materialEditor=new GLMotif::MaterialEditor("MaterialEditor",materialMargin);
-		materialEditor->track(renderSettings.surfaceMaterial);
-		materialEditor->getValueChangedCallbacks().add(this,&LidarViewer::renderSettingsChangedCallback);
-		
-		materialMargin->manageChild();
+		lightingMargin->manageChild();
 		}
 	
 	/* Create a page with plane setting: */
 	renderPager->setNextPageName("Plane");
 	
-	GLMotif::RowColumn* planeBox=new GLMotif::RowColumn("PlaneBox",renderPager,false);
+	GLMotif::Margin* planeMargin=new GLMotif::Margin("PlaneMargin",renderPager,false);
+	planeMargin->setAlignment(GLMotif::Alignment(GLMotif::Alignment::VCENTER));
+	
+	GLMotif::RowColumn* planeBox=new GLMotif::RowColumn("PlaneBox",planeMargin,false);
 	planeBox->setOrientation(GLMotif::RowColumn::VERTICAL);
 	planeBox->setPacking(GLMotif::RowColumn::PACK_TIGHT);
 	planeBox->setNumMinorWidgets(2);
@@ -865,31 +924,12 @@ GLMotif::PopupWindow* LidarViewer::createRenderDialog(void)
 	exaggerationSlider->setSliderMapping(GLMotif::TextFieldSlider::EXP10);
 	exaggerationSlider->setValueRange(0.05,20.0,0.02);
 	exaggerationSlider->getSlider()->addNotch(0.0f);
-	exaggerationSlider->track(renderSettings.planeDistanceExaggeration);
+	exaggerationSlider->track(renderSettings.exaggerationScale);
 	exaggerationSlider->getValueChangedCallbacks().add(this,&LidarViewer::renderSettingsChangedCallback);
 	
-	/* Create a toggle button to enable plane distance visualization: */
-	GLMotif::Margin* enableTexturePlaneMargin=new GLMotif::Margin("EnableTexturePlaneMargin",planeBox,false);
-	enableTexturePlaneMargin->setAlignment(GLMotif::Alignment(GLMotif::Alignment::LEFT,GLMotif::Alignment::VCENTER));
-	
-	GLMotif::ToggleButton* enableTexturePlaneToggle=new GLMotif::ToggleButton("EnableTexturePlaneToggle",enableTexturePlaneMargin,"Show Plane Distance");
-	enableTexturePlaneToggle->setBorderWidth(0.0f);
-	enableTexturePlaneToggle->setHAlignment(GLFont::Left);
-	enableTexturePlaneToggle->track(renderSettings.useTexturePlane);
-	enableTexturePlaneToggle->getValueChangedCallbacks().add(this,&LidarViewer::renderSettingsChangedCallback);
-	
-	enableTexturePlaneMargin->manageChild();
-	
-	/* Create a slider to select the plane distance visualization scale: */
-	GLMotif::TextFieldSlider* texturePlaneScaleSlider=new GLMotif::TextFieldSlider("TexturePlaneScaleSlider",planeBox,8,ss.fontHeight*10.0f);
-	texturePlaneScaleSlider->getTextField()->setFieldWidth(8);
-	texturePlaneScaleSlider->getTextField()->setPrecision(3);
-	texturePlaneScaleSlider->setSliderMapping(GLMotif::TextFieldSlider::EXP10);
-	texturePlaneScaleSlider->setValueRange(0.01,10000.0,0.1);
-	texturePlaneScaleSlider->track(renderSettings.texturePlaneScale);
-	texturePlaneScaleSlider->getValueChangedCallbacks().add(this,&LidarViewer::renderSettingsChangedCallback);
-	
 	planeBox->manageChild();
+	
+	planeMargin->manageChild();
 	
 	renderPager->setCurrentChildIndex(0);
 	renderPager->manageChild();
@@ -987,36 +1027,35 @@ GLMotif::PopupWindow* LidarViewer::createInteractionDialog(void)
 	return interactionDialog;
 	}
 
-void LidarViewer::updateTexturePlane(const PlanePrimitive* plane)
-	{
-	/* Update the texture plane: */
-	renderSettings.texturePlane=plane->getPlane();
-	if(renderSettings.texturePlane.getNormal()[2]<0.0)
-		renderSettings.texturePlane=GPlane(-renderSettings.texturePlane.getNormal(),-renderSettings.texturePlane.getOffset());
-	renderSettings.texturePlane.normalize();
-	
-	#if USE_COLLABORATION
-	if(koinonia!=0)
-		{
-		/* Share the new render settings with the server: */
-		koinonia->replaceSharedObject(renderSettingsId);
-		}
-	#endif
-	}
-
 void LidarViewer::setPickedPrimitive(int newPickedPrimitive)
 	{
+	/* Update the point shader: */
+	pointShader.setDistancePrimitive(newPickedPrimitive>=0?primitives[newPickedPrimitive]:0);
+	
+	/* Update the exaggeration plane: */
 	if(newPickedPrimitive>=0)
 		{
-		/* Enable primitive distance visualization: */
-		pointShader.setDistancePrimitive(primitives[newPickedPrimitive]);
-		}
-	else
-		{
-		/* Disable primitive distance visualization: */
-		pointShader.setDistancePrimitive(0);
+		/* Check if the given primitive is a plane primitive: */
+		PlanePrimitive* plane=dynamic_cast<PlanePrimitive*>(primitives[newPickedPrimitive]);
+		if(plane!=0)
+			{
+			/* Update the exaggeration plane: */
+			renderSettings.exaggerationPlane=RenderSettings::Plane(plane->getPlane());
+			if(renderSettings.exaggerationPlane.getNormal()[2]<RenderSettings::Plane::Scalar(0))
+				renderSettings.exaggerationPlane.flip();
+			renderSettings.exaggerationPlane.normalize();
+			
+			#if USE_COLLABORATION
+			if(koinonia!=0)
+				{
+				/* Share the new render settings with the server: */
+				koinonia->replaceSharedObject(renderSettingsId);
+				}
+			#endif
+			}
 		}
 	
+	/* Remember the picked primitive: */
 	lastPickedPrimitive=newPickedPrimitive;
 	}
 
@@ -1274,24 +1313,24 @@ LidarViewer::LidarViewer(int& argc,char**& argv)
 		Misc::ConfigurationFileSection cfg=configFile.getSection("/LidarViewer");
 		
 		/* Override program settings from configuration file: */
-		renderQuality=cfg.retrieveValue<Scalar>("./renderQuality",renderQuality);
-		fncWeight=cfg.retrieveValue<Scalar>("./focusAndContextWeight",fncWeight);
-		pointSize=cfg.retrieveValue<float>("./pointSize",pointSize);
-		renderSettings.pointBasedLighting=cfg.retrieveValue<bool>("./enableLighting",renderSettings.pointBasedLighting);
-		renderSettings.surfaceMaterial=cfg.retrieveValue<GLMaterial>("./surfaceMaterial",renderSettings.surfaceMaterial);
-		renderSettings.usePointColors=cfg.retrieveValue<bool>("./usePointColors",renderSettings.usePointColors);
-		renderSettings.useSplatting=cfg.retrieveValue<bool>("./useSplatting",renderSettings.useSplatting);
-		renderSettings.splatSize=cfg.retrieveValue<double>("./splatSize",renderSettings.splatSize);
-		renderSettings.enableSun=cfg.retrieveValue<bool>("./enableSun",renderSettings.enableSun);
-		renderSettings.sunAzimuth=cfg.retrieveValue<Scalar>("./sunAzimuth",renderSettings.sunAzimuth);
-		renderSettings.sunElevation=cfg.retrieveValue<Scalar>("./sunElevation",renderSettings.sunElevation);
-		overrideTools=cfg.retrieveValue<bool>("./overrideTools",overrideTools);
-		defaultSelectorRadius=cfg.retrieveValue<Vrui::Scalar>("./brushSize",defaultSelectorRadius);
-		brushColor=cfg.retrieveValue<Misc::RGBA<Misc::Float32> >("./brushColor",brushColor);
-		primitiveColor=cfg.retrieveValue<Primitive::Color>("./primitiveColor",primitiveColor);
-		selectedPrimitiveColor=cfg.retrieveValue<Primitive::Color>("./selectedPrimitiveColor",selectedPrimitiveColor);
-		memCacheSize=cfg.retrieveValue<unsigned int>("./memoryCacheSize",memCacheSize);
-		gfxCacheSize=cfg.retrieveValue<unsigned int>("./graphicsCacheSize",gfxCacheSize);
+		cfg.updateValue("./renderQuality",renderQuality);
+		cfg.updateValue("./focusAndContextWeight",fncWeight);
+		cfg.updateValue<float>("./pointSize",pointSize);
+		// renderSettings.colorSource=...;
+		cfg.updateValue("./surfaceMaterial",renderSettings.surfaceMaterial);
+		cfg.updateValue("./useLighting",renderSettings.useLighting);
+		cfg.updateValue("./useSurfels",renderSettings.useSurfels);
+		cfg.updateValue("./surfelScale",renderSettings.surfelScale);
+		cfg.updateValue("./enableSun",renderSettings.enableSun);
+		cfg.updateValue("./sunAzimuth",renderSettings.sunAzimuth);
+		cfg.updateValue("./sunElevation",renderSettings.sunElevation);
+		cfg.updateValue("./overrideTools",overrideTools);
+		cfg.updateValue("./brushSize",defaultSelectorRadius);
+		cfg.updateValue("./brushColor",brushColor);
+		cfg.updateValue("./primitiveColor",primitiveColor);
+		cfg.updateValue("./selectedPrimitiveColor",selectedPrimitiveColor);
+		cfg.updateValue("./memoryCacheSize",memCacheSize);
+		cfg.updateValue("./graphicsCacheSize",gfxCacheSize);
 		}
 	catch(const std::runtime_error& err)
 		{
@@ -1344,9 +1383,9 @@ LidarViewer::LidarViewer(int& argc,char**& argv)
 					}
 				}
 			else if(strcasecmp(argv[i]+1,"enableLighting")==0)
-				renderSettings.pointBasedLighting=true;
+				renderSettings.useLighting=true;
 			else if(strcasecmp(argv[i]+1,"usePointColors")==0)
-				renderSettings.usePointColors=true;
+				renderSettings.colorSource=PointShader::PointSet;
 			else if(strcasecmp(argv[i]+1,"sceneGraph")==0)
 				{
 				if(i+1<argc)
@@ -1447,11 +1486,8 @@ LidarViewer::LidarViewer(int& argc,char**& argv)
 	sun->disable();
 	updateSun();
 	
-	/* Initialize the point rendering shader: */
-	pointShader.setUseLighting(renderSettings.pointBasedLighting);
-	pointShader.setUsePointColors(renderSettings.usePointColors);
-	pointShader.setUseSurfels(renderSettings.useSplatting);
-	pointShader.setSurfelScale(renderSettings.splatSize);
+	/* Initialize the rendering settings: */
+	renderSettingsChangedCallback(0);
 	
 	/* Create the GUI: */
 	mainMenu=createMainMenu();
@@ -1488,30 +1524,30 @@ LidarViewer::LidarViewer(int& argc,char**& argv)
 		
 		DataType::StructureElement planeElements[]=
 			{
-			{renderSettingsTypes.createFixedArray(3,planeScalarType),0}, // offsetof(GPlane,normal)}, yikes
-			{planeScalarType,3*sizeof(double)} // offsetof(GPlane,offset)} yikes
+			{renderSettingsTypes.createFixedArray(3,planeScalarType),0}, // offsetof(RenderSettings::Plane,normal)}, yikes
+			{planeScalarType,3*sizeof(double)} // offsetof(RenderSettings::Plane,offset)} yikes
 			};
-		DataType::TypeID planeType=renderSettingsTypes.createStructure(2,planeElements,sizeof(GPlane));
+		DataType::TypeID planeType=renderSettingsTypes.createStructure(2,planeElements,sizeof(RenderSettings::Plane));
 		
 		DataType::StructureElement renderSettingsElements[]=
 			{
-			{DataType::Bool,offsetof(RenderSettings,pointBasedLighting)},
+			{DataType::getAtomicType<int>(),offsetof(RenderSettings,colorSource)},
 			{materialType,offsetof(RenderSettings,surfaceMaterial)},
-			{DataType::Bool,offsetof(RenderSettings,usePointColors)},
-			{DataType::Bool,offsetof(RenderSettings,useSplatting)},
-			{DataType::getAtomicType<double>(),offsetof(RenderSettings,splatSize)},
+			{DataType::getAtomicType<KoinoniaProtocol::ObjectID>(),offsetof(RenderSettings,distPrimitiveId)},
+			{DataType::getAtomicType<double>(),offsetof(RenderSettings,distScale)},
+			{DataType::Bool,offsetof(RenderSettings,useLighting)},
+			{DataType::Bool,offsetof(RenderSettings,useSurfels)},
+			{DataType::getAtomicType<double>(),offsetof(RenderSettings,surfelScale)},
+			{planeType,offsetof(RenderSettings,exaggerationPlane)},
+			{DataType::getAtomicType<double>(),offsetof(RenderSettings,exaggerationScale)},
 			{DataType::Bool,offsetof(RenderSettings,enableSun)},
 			{DataType::getAtomicType<double>(),offsetof(RenderSettings,sunAzimuth)},
-			{DataType::getAtomicType<double>(),offsetof(RenderSettings,sunElevation)},
-			{DataType::Bool,offsetof(RenderSettings,useTexturePlane)},
-			{planeType,offsetof(RenderSettings,texturePlane)},
-			{DataType::getAtomicType<double>(),offsetof(RenderSettings,texturePlaneScale)},
-			{DataType::getAtomicType<double>(),offsetof(RenderSettings,planeDistanceExaggeration)}
+			{DataType::getAtomicType<double>(),offsetof(RenderSettings,sunElevation)}
 			};
 		DataType::TypeID renderSettingsType=renderSettingsTypes.createStructure(12,renderSettingsElements,sizeof(RenderSettings));
 		
 		/* Share the settings structure: */
-		renderSettingsId=koinonia->shareObject("LidarViewer.renderSettings",(1U<<16)+0U,renderSettingsTypes,renderSettingsType,&renderSettings,&LidarViewer::renderSettingsUpdatedCallback,this);
+		renderSettingsId=koinonia->shareObject("LidarViewer.renderSettings",(2U<<16)+0U,renderSettingsTypes,renderSettingsType,&renderSettings,&LidarViewer::renderSettingsUpdatedCallback,this);
 		
 		/* Create a data type dictionary to share extracted primitives: */
 		Primitive::registerType(primitiveDataType);
@@ -1612,7 +1648,7 @@ void LidarViewer::frame(void)
 			{
 			octrees[i]->startRenderPass();
 			octrees[i]->setFocusAndContext(displayCenter,displaySize*Scalar(0.5),fncWeight);
-			octrees[i]->setBaseSurfelSize(renderSettings.splatSize,float(Vrui::getNavigationTransformation().getScaling()));
+			octrees[i]->setBaseSurfelSize(renderSettings.surfelScale,float(Vrui::getNavigationTransformation().getScaling()));
 			}
 	}
 
@@ -1638,16 +1674,16 @@ void LidarViewer::display(GLContextData& contextData) const
 	/* Enable the point rendering shader: */
 	PointShader::DataItem* psdi=pointShader.enable(contextData);
 	
-	if(renderSettings.planeDistanceExaggeration!=1.0)
+	if(renderSettings.exaggerationScale!=1.0)
 		{
 		/* Enable plane distance exaggeration: */
 		glMatrixMode(GL_MODELVIEW);
 		glPushMatrix();
-		GPlane::Vector fTrans=renderSettings.texturePlane.getNormal()*(renderSettings.texturePlane.getOffset()/Geometry::sqr(renderSettings.texturePlane.getNormal()));
-		Geometry::Rotation<GPlane::Scalar,3> fRot=Geometry::Rotation<GPlane::Scalar,3>::rotateFromTo(GPlane::Vector(0,0,1),renderSettings.texturePlane.getNormal());
+		RenderSettings::Plane::Vector fTrans=renderSettings.exaggerationPlane.getNormal()*(renderSettings.exaggerationPlane.getOffset()/Geometry::sqr(renderSettings.exaggerationPlane.getNormal()));
+		Geometry::Rotation<RenderSettings::Plane::Scalar,3> fRot=Geometry::Rotation<RenderSettings::Plane::Scalar,3>::rotateFromTo(RenderSettings::Plane::Vector(0,0,1),renderSettings.exaggerationPlane.getNormal());
 		glTranslate(fTrans);
 		glRotate(fRot);
-		glScaled(1.0,1.0,renderSettings.planeDistanceExaggeration);
+		glScaled(1.0,1.0,renderSettings.exaggerationScale);
 		glRotate(Geometry::invert(fRot));
 		glTranslate(-fTrans);
 		}
@@ -1659,7 +1695,7 @@ void LidarViewer::display(GLContextData& contextData) const
 		if(showOctrees[i])
 			octrees[i]->glRenderAction(frustum,psdi,contextData);
 	
-	if(renderSettings.planeDistanceExaggeration!=1.0)
+	if(renderSettings.exaggerationScale!=1.0)
 		glPopMatrix();
 	
 	/* Disable the point rendering shader: */
@@ -1766,15 +1802,13 @@ void LidarViewer::alignSurfaceFrame(Vrui::SurfaceNavigationTool::AlignmentData& 
 void LidarViewer::extractPlaneCallback(Misc::CallbackData* cbData)
 	{
 	/* Extract a plane primitive and update the texture plane if successful: */
-	PlanePrimitive* primitive=extractPrimitive<PlanePrimitive>();
-	updateTexturePlane(primitive);
+	extractPrimitive<PlanePrimitive>();
 	}
 
 void LidarViewer::extractBruntonCallback(Misc::CallbackData* cbData)
 	{
 	/* Extract a brunton primitive and update the texture plane if successful: */
-	BruntonPrimitive* primitive=extractPrimitive<BruntonPrimitive>();
-	updateTexturePlane(primitive);
+	extractPrimitive<BruntonPrimitive>();
 	}
 
 void LidarViewer::extractLineCallback(Misc::CallbackData* cbData)
@@ -1939,22 +1973,12 @@ void LidarViewer::loadPrimitivesOKCallback(GLMotif::FileSelectionDialog::OKCallb
 					break;
 				
 				case 4:
-					{
-					PlanePrimitive* newPlane=new PlanePrimitive(*primitiveFile,-Primitive::Vector(offsets));
-					updateTexturePlane(newPlane);
-					newPrimitive=newPlane;
-					
+					newPrimitive=new PlanePrimitive(*primitiveFile,-Primitive::Vector(offsets));
 					break;
-					}
 				
 				case 5:
-					{
-					BruntonPrimitive* newBrunton=new BruntonPrimitive(*primitiveFile,-Primitive::Vector(offsets));
-					updateTexturePlane(newBrunton);
-					newPrimitive=newBrunton;
-					
+					newPrimitive=new BruntonPrimitive(*primitiveFile,-Primitive::Vector(offsets));
 					break;
-					}
 				
 				default:
 					throw Misc::makeStdErr(0,"Unknown primitive type %d",primitiveType);

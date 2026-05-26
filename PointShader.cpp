@@ -111,10 +111,15 @@ Methods of class PointShader:
 
 void PointShader::setDistPrimitiveType(PointShader::DistPrimitiveType newDistPrimitiveType)
 	{
-	/* Invalidate the shader if the primitive type changed: */
-	if(distPrimitiveType!=newDistPrimitiveType)
-		++settingsVersion;
+	/* Update the effective color source: */
+	ColorSource newEffectiveColorSource=colorSource;
+	if(colorSource==PrimitiveDistance&&newDistPrimitiveType==DistNone)
+		newEffectiveColorSource=PointSet;
 	
+	/* Invalidate the shader if anything changed: */
+	if(effectiveColorSource!=newEffectiveColorSource||(effectiveColorSource==PrimitiveDistance&&distPrimitiveType!=newDistPrimitiveType))
+		++settingsVersion;
+	effectiveColorSource=newEffectiveColorSource;
 	distPrimitiveType=newDistPrimitiveType;
 	}
 
@@ -159,84 +164,89 @@ void PointShader::buildShader(GLContextData& contextData,PointShader::DataItem* 
 		}
 	
 	/* Determine the point's color: */
-	if(distPrimitiveType!=DistNone)
+	switch(effectiveColorSource)
 		{
-		switch(distPrimitiveType)
-			{
-			case DistPoint:
-				vertexShaderDefines+="\
-					uniform vec3 distCenter;\n\
-					uniform float distOffset;\n\
-					uniform float distScale;\n";
-				
-				vertexShaderMain+="\
-					/* Calculate the distance from the primitive: */\n\
-					float dist=(length(gl_Vertex.xyz-distCenter)-distOffset)*distScale;\n";
-				
-				break;
-			
-			case DistLine:
-				vertexShaderDefines+="\
-					uniform vec3 distCenter;\n\
-					uniform vec3 distAxis;\n\
-					uniform float distOffset;\n\
-					uniform float distScale;\n";
-				
-				vertexShaderMain+="\
-					/* Calculate the distance from the primitive: */\n\
-					float dist=(length(cross(gl_Vertex.xyz-distCenter,distAxis))-distOffset)*distScale;\n";
-				
-				break;
-			
-			case DistPlane:
-				vertexShaderDefines+="\
-					uniform vec4 distPlane;\n\
-					uniform float distScale;\n";
-				
-				vertexShaderMain+="\
-					/* Calculate the distance from the primitive: */\n\
-					float dist=dot(gl_Vertex,distPlane)*distScale;\n";
-				
-				break;
-			
-			default:
-				;
-			}
-		
-		/* Retrieve the point color from the distance color map: */
-		vertexShaderDefines+="\
-			uniform sampler1D distMap;\n";
-		
-		vertexShaderMain+="\
-			\n\
-			/* Get the material properties from the primitive distance texture: */\n\
-			vec4 ambient=texture1D(distMap,dist+0.5);\n\
-			vec4 diffuse=ambient;\n";
-		}
-	else if(usePointColors)
-		{
-		if(dataItem->correctGamma)
-			{
+		case Material:
 			vertexShaderMain+="\
-				/* Get the material properties from the gamma-corrected current color: */\n\
-				vec4 color=vec4(pow(gl_Color.rgb,vec3(2.2)),gl_Color.a);\n\
-				vec4 ambient=color;\n\
-				vec4 diffuse=color;\n";
-			}
-		else
-			{
+				/* Get the material properties from the material state: */\n\
+				vec4 ambient=gl_FrontMaterial.ambient;\n\
+				vec4 diffuse=gl_FrontMaterial.diffuse;\n";
+			
+			break;
+		
+		case PointSet:
+			if(dataItem->correctGamma)
+				{
+				vertexShaderMain+="\
+					/* Get the material properties from the gamma-corrected current color: */\n\
+					vec4 color=vec4(pow(gl_Color.rgb,vec3(2.2)),gl_Color.a);\n\
+					vec4 ambient=color;\n\
+					vec4 diffuse=color;\n";
+				}
+			else
+				{
+				vertexShaderMain+="\
+					/* Get the material properties from the current color: */\n\
+					vec4 ambient=gl_Color;\n\
+					vec4 diffuse=gl_Color;\n";
+				}
+			
+			break;
+		
+		case PrimitiveDistance:
+			switch(distPrimitiveType)
+				{
+				case DistPoint:
+					vertexShaderDefines+="\
+						uniform vec3 distCenter;\n\
+						uniform float distOffset;\n\
+						uniform float distScale;\n";
+					
+					vertexShaderMain+="\
+						/* Calculate the distance from the primitive: */\n\
+						float dist=(length(gl_Vertex.xyz-distCenter)-distOffset)*distScale;\n";
+					
+					break;
+				
+				case DistLine:
+					vertexShaderDefines+="\
+						uniform vec3 distCenter;\n\
+						uniform vec3 distAxis;\n\
+						uniform float distOffset;\n\
+						uniform float distScale;\n";
+					
+					vertexShaderMain+="\
+						/* Calculate the distance from the primitive: */\n\
+						float dist=(length(cross(gl_Vertex.xyz-distCenter,distAxis))-distOffset)*distScale;\n";
+					
+					break;
+				
+				case DistPlane:
+					vertexShaderDefines+="\
+						uniform vec4 distPlane;\n\
+						uniform float distScale;\n";
+					
+					vertexShaderMain+="\
+						/* Calculate the distance from the primitive: */\n\
+						float dist=dot(gl_Vertex,distPlane)*distScale;\n";
+					
+					break;
+				
+				default:
+					;
+				}
+			
+			/* Retrieve the point color from the distance color map: */
+			vertexShaderDefines+="\
+				uniform sampler1D distMap;\n";
+			
 			vertexShaderMain+="\
-				/* Get the material properties from the current color: */\n\
-				vec4 ambient=gl_Color;\n\
-				vec4 diffuse=gl_Color;\n";
-			}
-		}
-	else
-		{
-		vertexShaderMain+="\
-			/* Get the material properties from the material state: */\n\
-			vec4 ambient=gl_FrontMaterial.ambient;\n\
-			vec4 diffuse=gl_FrontMaterial.diffuse;\n";
+				\n\
+				/* Get the material properties from the primitive distance texture: */\n\
+				vec4 ambient=texture1D(distMap,dist+0.5);\n\
+				vec4 diffuse=ambient;\n";
+			
+			break;
 		}
 	
 	if(useLighting)
@@ -484,8 +494,10 @@ void PointShader::buildShader(GLContextData& contextData,PointShader::DataItem* 
 	}
 
 PointShader::PointShader(void)
-	:distPrimitiveType(DistNone),
-	 useLighting(false),usePointColors(true),useSurfels(false),surfelScale(1),
+	:colorSource(Material),
+	 distPrimitiveType(DistNone),
+	 effectiveColorSource(Material),
+	 useLighting(false),useSurfels(false),surfelScale(1),
 	 settingsVersion(1)
 	{
 	}
@@ -547,6 +559,23 @@ void PointShader::initContext(GLContextData& contextData) const
 	delete[] planeColorMap;
 	}
 
+void PointShader::setColorSource(PointShader::ColorSource newColorSource)
+	{
+	/* Update the requested color source: */
+	colorSource=newColorSource;
+	
+	/* Update the effective color source: */
+	ColorSource newEffectiveColorSource=colorSource;
+	if(colorSource==PrimitiveDistance&&distPrimitiveType==DistNone)
+		newEffectiveColorSource=PointSet;
+	
+	if(effectiveColorSource!=newEffectiveColorSource)
+		{
+		effectiveColorSource=newEffectiveColorSource;
+		++settingsVersion;
+		}
+	}
+
 void PointShader::setDistancePrimitive(Primitive* newDistancePrimitive)
 	{
 	/* Determine the type of primitive and extract its distance calculation parameters: */
@@ -605,16 +634,6 @@ void PointShader::setUseLighting(bool newUseLighting)
 	if(useLighting!=newUseLighting)
 		{
 		useLighting=newUseLighting;
-		++settingsVersion;
-		}
-	}
-
-void PointShader::setUsePointColors(bool newUsePointColors)
-	{
-	/* Update the point color flag: */
-	if(usePointColors!=newUsePointColors)
-		{
-		usePointColors=newUsePointColors;
 		++settingsVersion;
 		}
 	}

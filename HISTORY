@@ -213,7 +213,7 @@ LiDAR Viewer 2.22:
 - Bumped Vrui version requirement to Vrui-14.0-001
 - Bumped Vrui collaboration infrastructure version requirement to 10.3
 
-LiDAR Viewer 2.23:
+LiDAR Viewer 3.0:
 - Bumped Vrui version requirement to Vrui-15.0-001
   - Adapted to Vrui API changes
 - Bumped Vrui collaboration infrastructure version requirement to 10.5
@@ -225,3 +225,8 @@ LiDAR Viewer 2.23:
   version of PointBasedLightingShader, renamed to PointShader, to get
   gamma correction and expanded primitive distances when lighting is
   disabled.
+- Changed render settings type to reflect new PointShader capabilities,
+  bumped Koinonia render settings version to 2.0.
+- Cleaned up render dialog.
+- Changed configuration file settings and command line options to
+  reflect new PointShader capabilities,
