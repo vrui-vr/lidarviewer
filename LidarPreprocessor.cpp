@@ -1139,7 +1139,7 @@ void loadPointFileX3P(PointAccumulator& pa,const char* fileName)
 		axes[axisIndex].incremental=axisType=="I";
 		axes[axisIndex].offset=0.0;
 		axes[axisIndex].increment=1.0;
-		if(axes[axisIndex].incremental)
+		if(axes[axisIndex].incremental||axisType=="A")
 			{
 			/* Parse the axis offset: */
 			const std::string& offset=getCharacterData(axis,"Offset");
@@ -1149,7 +1149,7 @@ void loadPointFileX3P(PointAccumulator& pa,const char* fileName)
 			const std::string& increment=getCharacterData(axis,"Increment");
 			axes[axisIndex].increment=atof(increment.c_str());
 			}
-		else if(axisType!="A")
+		else
 			throw Misc::makeStdErr(__PRETTY_FUNCTION__,"Invalid AxisType value %s",axisType.c_str());
 		
 		/* Parse the axis data type: */
@@ -1201,7 +1201,7 @@ void loadPointFileX3P(PointAccumulator& pa,const char* fileName)
 				for(int i=0;i<3;++i)
 					if(!axes[i].incremental)
 						{
-						p[i]=readCoordinateX3P(*pointData,axes[i].dataType);
+						p[i]=readCoordinateX3P(*pointData,axes[i].dataType)*axes[i].increment;
 						valid=valid&&Math::isFinite(p[i]);
 						}
 				

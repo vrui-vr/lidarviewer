@@ -230,3 +230,5 @@ LiDAR Viewer 3.0:
 - Cleaned up render dialog.
 - Changed configuration file settings and command line options to
   reflect new PointShader capabilities,
+- Fixed X3P file input filter in LidarPreprocesor to use axis scalings
+  for absolute axes.
