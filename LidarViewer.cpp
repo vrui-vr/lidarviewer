@@ -57,7 +57,6 @@ Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include <GL/GLModels.h>
 #include <GL/GLColorMap.h>
 #include <GL/GLFrustum.h>
-#include <GL/GLPrintError.h>
 #include <GLMotif/StyleSheet.h>
 #include <GLMotif/WidgetManager.h>
 #include <GLMotif/PopupMenu.h>
@@ -124,7 +123,8 @@ LidarViewer::RenderSettings::RenderSettings(void)
 	 useLighting(false),useSurfels(false),surfelScale(1),
 	 exaggerationPlane(Plane::Vector(0,0,1),Plane::Scalar(0)),
 	 exaggerationScale(1),
-	 enableSun(false),sunAzimuth(180),sunElevation(45)
+	 enableSun(false),sunAzimuth(180),sunElevation(45),
+	 showPrimitives(true)
 	{
 	}
 
@@ -383,13 +383,19 @@ GLMotif::PopupMenu* LidarViewer::createExtractionMenu(void)
 	GLMotif::Button* intersectPrimitivesButton=new GLMotif::Button("IntersectPrimitivesButton",extractionMenu,"Intersect Primitives");
 	intersectPrimitivesButton->getSelectCallbacks().add(this,&LidarViewer::intersectPrimitivesCallback);
 	
+	GLMotif::ToggleButton* showPrimitivesToggle=new GLMotif::ToggleButton("ShowPrimitivesToggle",extractionMenu,"Show Primitives");
+	showPrimitivesToggle->track(renderSettings.showPrimitives);
+	showPrimitivesToggle->getValueChangedCallbacks().add(this,&LidarViewer::renderSettingsChangedCallback);
+	
+	new GLMotif::Separator("Separator1",extractionMenu,GLMotif::Separator::HORIZONTAL,0.0f,GLMotif::Separator::LOWERED);
+	
 	GLMotif::Button* loadPrimitivesButton=new GLMotif::Button("LoadPrimitivesButton",extractionMenu,"Load Primitives...");
 	loadPrimitivesButton->getSelectCallbacks().add(this,&LidarViewer::loadPrimitivesCallback);
 	
 	GLMotif::Button* savePrimitivesButton=new GLMotif::Button("SavePrimitivesButton",extractionMenu,"Save Primitives...");
 	savePrimitivesButton->getSelectCallbacks().add(this,&LidarViewer::savePrimitivesCallback);
 	
-	new GLMotif::Separator("Separator1",extractionMenu,GLMotif::Separator::HORIZONTAL,0.0f,GLMotif::Separator::LOWERED);
+	new GLMotif::Separator("Separator2",extractionMenu,GLMotif::Separator::HORIZONTAL,0.0f,GLMotif::Separator::LOWERED);
 	
 	GLMotif::Button* deleteSelectedPrimitivesButton=new GLMotif::Button("DeleteSelectedPrimitivesButton",extractionMenu,"Delete Selected Primitives");
 	deleteSelectedPrimitivesButton->getSelectCallbacks().add(this,&LidarViewer::deleteSelectedPrimitivesCallback);
@@ -574,6 +580,7 @@ void LidarViewer::renderSettingsUpdatedCallback(KoinoniaClient* client,KoinoniaP
 	thisPtr->coordTransform->setTransform(newTransform);
 	
 	/* Update the UI: */
+	thisPtr->mainMenu->updateVariables();
 	thisPtr->renderDialog->updateVariables();
 	
 	/* Update the point rendering shader: */
@@ -1542,7 +1549,8 @@ LidarViewer::LidarViewer(int& argc,char**& argv)
 			{DataType::getAtomicType<double>(),offsetof(RenderSettings,exaggerationScale)},
 			{DataType::Bool,offsetof(RenderSettings,enableSun)},
 			{DataType::getAtomicType<double>(),offsetof(RenderSettings,sunAzimuth)},
-			{DataType::getAtomicType<double>(),offsetof(RenderSettings,sunElevation)}
+			{DataType::getAtomicType<double>(),offsetof(RenderSettings,sunElevation)},
+			{DataType::Bool,offsetof(RenderSettings,showPrimitives)}
 			};
 		DataType::TypeID renderSettingsType=renderSettingsTypes.createStructure(12,renderSettingsElements,sizeof(RenderSettings));
 		
@@ -1703,16 +1711,19 @@ void LidarViewer::display(GLContextData& contextData) const
 	
 	glPopAttrib();
 	
-	glPushAttrib(GL_ENABLE_BIT|GL_LIGHTING_BIT|GL_LINE_BIT|GL_POINT_BIT|GL_POLYGON_BIT|GL_TEXTURE_BIT);
-	
-	glDisable(GL_LIGHTING);
-	glDisable(GL_CULL_FACE);
-	
-	/* Render all extracted primitives: */
-	for(PrimitiveList::const_iterator pIt=primitives.begin();pIt!=primitives.end();++pIt)
-		(*pIt)->glRenderAction(contextData);
-	
-	glPopAttrib();
+	if(renderSettings.showPrimitives)
+		{
+		glPushAttrib(GL_ENABLE_BIT|GL_LIGHTING_BIT|GL_LINE_BIT|GL_POINT_BIT|GL_POLYGON_BIT|GL_TEXTURE_BIT);
+		
+		glDisable(GL_LIGHTING);
+		glDisable(GL_CULL_FACE);
+		
+		/* Render all extracted primitives: */
+		for(PrimitiveList::const_iterator pIt=primitives.begin();pIt!=primitives.end();++pIt)
+			(*pIt)->glRenderAction(contextData);
+		
+		glPopAttrib();
+		}
 	}
 
 void LidarViewer::resetNavigation(void)
@@ -1723,21 +1734,24 @@ void LidarViewer::resetNavigation(void)
 
 void LidarViewer::glRenderActionTransparent(GLContextData& contextData) const
 	{
-	glPushAttrib(GL_COLOR_BUFFER_BIT|GL_ENABLE_BIT|GL_LINE_BIT|GL_POINT_BIT|GL_POLYGON_BIT);
-	glDisable(GL_LIGHTING);
-	glDisable(GL_CULL_FACE);
-	
-	/* Go to navigational space: */
-	Vrui::goToNavigationalSpace(contextData);
-	
-	/* Render all extracted primitives: */
-	for(PrimitiveList::const_iterator pIt=primitives.begin();pIt!=primitives.end();++pIt)
-		(*pIt)->glRenderActionTransparent(contextData);
-	
-	/* Go back to physical space: */
-	glPopMatrix();
-	
-	glPopAttrib();
+	if(renderSettings.showPrimitives)
+		{
+		glPushAttrib(GL_COLOR_BUFFER_BIT|GL_ENABLE_BIT|GL_LINE_BIT|GL_POINT_BIT|GL_POLYGON_BIT);
+		glDisable(GL_LIGHTING);
+		glDisable(GL_CULL_FACE);
+		
+		/* Go to navigational space: */
+		Vrui::goToNavigationalSpace(contextData);
+		
+		/* Render all extracted primitives: */
+		for(PrimitiveList::const_iterator pIt=primitives.begin();pIt!=primitives.end();++pIt)
+			(*pIt)->glRenderActionTransparent(contextData);
+		
+		/* Go back to physical space: */
+		glPopMatrix();
+		
+		glPopAttrib();
+		}
 	}
 
 void LidarViewer::initContext(GLContextData& contextData) const

@@ -669,48 +669,51 @@ PointShader::DataItem* PointShader::enable(GLContextData& contextData) const
 		/* Enable the shader: */
 		glUseProgramObjectARB(dataItem->programObject);
 		
-		/* Upload primitive distance calculation parameters: */
-		switch(distPrimitiveType)
+		if(colorSource==PrimitiveDistance&&distPrimitiveType!=DistNone)
 			{
-			case DistPoint:
+			/* Upload primitive distance calculation parameters: */
+			switch(distPrimitiveType)
 				{
-				Geometry::Point<GLfloat,3> dc(distCenter);
-				glUniformARB<3>(dataItem->distCenterLocation,1,dc.getComponents());
-				glUniformARB(dataItem->distOffsetLocation,GLfloat(distOffset));
-				glUniformARB(dataItem->distScaleLocation,GLfloat(distScale));
+				case DistPoint:
+					{
+					Geometry::Point<GLfloat,3> dc(distCenter);
+					glUniformARB<3>(dataItem->distCenterLocation,1,dc.getComponents());
+					glUniformARB(dataItem->distOffsetLocation,GLfloat(distOffset));
+					glUniformARB(dataItem->distScaleLocation,GLfloat(distScale));
+					
+					break;
+					}
 				
-				break;
-				}
-			
-			case DistLine:
-				{
-				Geometry::Point<GLfloat,3> dc(distCenter);
-				glUniformARB<3>(dataItem->distCenterLocation,1,dc.getComponents());
-				Geometry::Point<GLfloat,3> da(distAxis);
-				glUniformARB<3>(dataItem->distAxisLocation,1,da.getComponents());
-				glUniformARB(dataItem->distOffsetLocation,GLfloat(distOffset));
-				glUniformARB(dataItem->distScaleLocation,GLfloat(distScale));
+				case DistLine:
+					{
+					Geometry::Point<GLfloat,3> dc(distCenter);
+					glUniformARB<3>(dataItem->distCenterLocation,1,dc.getComponents());
+					Geometry::Point<GLfloat,3> da(distAxis);
+					glUniformARB<3>(dataItem->distAxisLocation,1,da.getComponents());
+					glUniformARB(dataItem->distOffsetLocation,GLfloat(distOffset));
+					glUniformARB(dataItem->distScaleLocation,GLfloat(distScale));
+					
+					break;
+					}
 				
-				break;
-				}
-			
-			case DistPlane:
-				{
-				GLfloat dp[4];
-				for(int i=0;i<3;++i)
-					dp[i]=GLfloat(distPlane.getNormal()[i]);
-				dp[3]=GLfloat(-distPlane.getOffset());
-				glUniformARB<4>(dataItem->distPlaneLocation,1,dp);
-				glUniformARB(dataItem->distScaleLocation,GLfloat(distScale));
+				case DistPlane:
+					{
+					GLfloat dp[4];
+					for(int i=0;i<3;++i)
+						dp[i]=GLfloat(distPlane.getNormal()[i]);
+					dp[3]=GLfloat(-distPlane.getOffset());
+					glUniformARB<4>(dataItem->distPlaneLocation,1,dp);
+					glUniformARB(dataItem->distScaleLocation,GLfloat(distScale));
+					
+					break;
+					}
 				
-				break;
+				default:
+					;
 				}
-			
-			default:
-				;
 			}
 		
-		if(distPrimitiveType!=DistNone)
+		if(colorSource==PrimitiveDistance&&distPrimitiveType!=DistNone)
 			{
 			/* Bind the distance color map texture: */
 			glActiveTextureARB(GL_TEXTURE0_ARB);
@@ -736,7 +739,10 @@ void PointShader::disable(PointShader::DataItem* dataItem) const
 	/* Disable all shader programs: */
 	glUseProgramObjectARB(0);
 	
-	/* Protect the distance color map texture: */
-	glActiveTextureARB(GL_TEXTURE0_ARB);
-	glBindTexture(GL_TEXTURE_1D,0);
+	if(colorSource==PrimitiveDistance&&distPrimitiveType!=DistNone)
+		{
+		/* Protect the distance color map texture: */
+		glActiveTextureARB(GL_TEXTURE0_ARB);
+		glBindTexture(GL_TEXTURE_1D,0);
+		}
 	}

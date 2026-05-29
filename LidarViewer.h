@@ -119,6 +119,7 @@ class LidarViewer:public Vrui::Application,public Vrui::TransparentObject,public
 		double exaggerationScale; // Scale factor for distance exaggeration
 		bool enableSun; // Flag whether to use a sun light source instead of all viewer's headlights
 		double sunAzimuth,sunElevation; // Azimuth and elevation angles of sun light source in degrees
+		bool showPrimitives; // Flag whether to show extracted primitives
 		
 		/* Constructors and destructors: */
 		RenderSettings(void); // Creates default rendering settings
