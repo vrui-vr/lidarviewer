@@ -563,12 +563,23 @@ void LidarViewer::distanceExaggerationSliderCallback(GLMotif::TextFieldSlider::V
 void LidarViewer::renderSettingsUpdatedCallback(KoinoniaClient* client,KoinoniaProtocol::ObjectID id,void* object,void* userData)
 	{
 	LidarViewer* thisPtr=static_cast<LidarViewer*>(userData);
+	RenderSettings& rs=thisPtr->renderSettings;
+	
+	/* Update the last picked primitive: */
+	int newPickedPrimitive=-1;
+	int numPrimitives(thisPtr->primitives.size());
+	for(int i=0;i<numPrimitives;++i)
+		if(thisPtr->primitives[i]->getObjectId()==rs.distPrimitiveId)
+			{
+			newPickedPrimitive=i;
+			break;
+			}
+	thisPtr->setPickedPrimitive(newPickedPrimitive,false);
 	
 	/* Update the sun light source: */
 	thisPtr->updateSun();
 	
 	/* Update the affine coordinate transformer to reflect the new exaggeration value: */
-	RenderSettings& rs=thisPtr->renderSettings;
 	Vrui::Vector tn=Vrui::Vector(rs.exaggerationPlane.getNormal());
 	Vrui::Vector fTrans=tn*(Vrui::Scalar(rs.exaggerationPlane.getOffset())/tn.sqr());
 	Vrui::Rotation fRot=Vrui::Rotation::rotateFromTo(Vrui::Vector(0,0,1),tn);
@@ -1034,7 +1045,7 @@ GLMotif::PopupWindow* LidarViewer::createInteractionDialog(void)
 	return interactionDialog;
 	}
 
-void LidarViewer::setPickedPrimitive(int newPickedPrimitive)
+void LidarViewer::setPickedPrimitive(int newPickedPrimitive,bool share)
 	{
 	/* Update the point shader: */
 	pointShader.setDistancePrimitive(newPickedPrimitive>=0?primitives[newPickedPrimitive]:0);
@@ -1051,16 +1062,19 @@ void LidarViewer::setPickedPrimitive(int newPickedPrimitive)
 			if(renderSettings.exaggerationPlane.getNormal()[2]<RenderSettings::Plane::Scalar(0))
 				renderSettings.exaggerationPlane.flip();
 			renderSettings.exaggerationPlane.normalize();
-			
-			#if USE_COLLABORATION
-			if(koinonia!=0)
-				{
-				/* Share the new render settings with the server: */
-				koinonia->replaceSharedObject(renderSettingsId);
-				}
-			#endif
 			}
 		}
+	
+	#if USE_COLLABORATION
+	if(koinonia!=0&&share)
+		{
+		/* Set the ID of the new picked primitive: */
+		renderSettings.distPrimitiveId=newPickedPrimitive>=0?primitives[newPickedPrimitive]->getObjectId():KoinoniaProtocol::ObjectID(0);
+		
+		/* Share the new render settings with the server: */
+		koinonia->replaceSharedObject(renderSettingsId);
+		}
+	#endif
 	
 	/* Remember the picked primitive: */
 	lastPickedPrimitive=newPickedPrimitive;
@@ -1552,7 +1566,7 @@ LidarViewer::LidarViewer(int& argc,char**& argv)
 			{DataType::getAtomicType<double>(),offsetof(RenderSettings,sunElevation)},
 			{DataType::Bool,offsetof(RenderSettings,showPrimitives)}
 			};
-		DataType::TypeID renderSettingsType=renderSettingsTypes.createStructure(12,renderSettingsElements,sizeof(RenderSettings));
+		DataType::TypeID renderSettingsType=renderSettingsTypes.createStructure(13,renderSettingsElements,sizeof(RenderSettings));
 		
 		/* Share the settings structure: */
 		renderSettingsId=koinonia->shareObject("LidarViewer.renderSettings",(2U<<16)+0U,renderSettingsTypes,renderSettingsType,&renderSettings,&LidarViewer::renderSettingsUpdatedCallback,this);

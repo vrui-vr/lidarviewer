@@ -217,7 +217,7 @@ class LidarViewer:public Vrui::Application,public Vrui::TransparentObject,public
 		{
 		Vrui::requestUpdate();
 		};
-	void setPickedPrimitive(int newPickedPrimitive); // Sets the index of the last picked primitive
+	void setPickedPrimitive(int newPickedPrimitive,bool share =true); // Sets the index of the last picked primitive; shares update with collaboration server if flag is true
 	template <class PrimitiveParam>
 	PrimitiveParam* extractPrimitive(void); // Extracts a primitive of some type from the octree
 	int addPrimitive(Primitive* newPrimitive); // Adds a primitive to the list; returns the index of the newly added primitive
