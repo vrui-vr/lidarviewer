@@ -1,6 +1,6 @@
 /***********************************************************************
 New version of LiDAR data preprocessor.
-Copyright (c) 2005-2025 Oliver Kreylos
+Copyright (c) 2005-2026 Oliver Kreylos
 
 This file is part of the LiDAR processing and analysis package.
 
@@ -54,7 +54,7 @@ Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #include "Config.h"
 #include "LidarTypes.h"
 #include "PointAccumulator.h"
-#include "ReadPlyFile.h"
+#include "PlyFile.h"
 #include "LidarProcessOctree.h"
 #include "LidarOctreeCreator.h"
 
@@ -383,6 +383,76 @@ void loadPointFileBinRgb(PointAccumulator& pa,const char* fileName)
 		
 		/* Store the point: */
 		pa.addPoint(PointAccumulator::Point(rp),PointAccumulator::Color(rcol));
+		}
+	}
+
+void loadPointFilePly(PointAccumulator& pa,const char* fileName,const char* plyColorNames[3])
+	{
+	PlyFile ply(*IO::openFile(fileName));
+	
+	#if 0
+	const PlyFile::ElementList& elements=ply.getElements();
+	std::cout<<"PLY file "<<argv[i]<<" contains "<<elements.size()<<" elements"<<std::endl;
+	for(PlyFile::ElementList::const_iterator eIt=elements.begin();eIt!=elements.end();++eIt)
+		{
+		const PlyFile::PropertyList& properties=eIt->getProperties();
+		std::cout<<"Element "<<eIt->getName()<<" has "<<eIt->getNumValues()<<" values and "<<properties.size()<<" properties"<<std::endl;
+		for(PlyFile::PropertyList::const_iterator pIt=properties.begin();pIt!=properties.end();++pIt)
+			std::cout<<"  Property "<<pIt->getName()<<std::endl;
+		}
+	#endif
+	
+	while(!ply.eof())
+		{
+		/* Check if the current element is one we can process: */
+		const PlyFile::Element& elem=ply.getCurrent();
+		if(elem.isElement("vertex"))
+			{
+			/* Find the element properties that we are interested in: */
+			static const char* posNames[3]={"x","y","z"};
+			const PlyFile::AtomicValue* posValues[3];
+			bool havePos=false;
+			const PlyFile::AtomicValue* colValues[3];
+			bool haveCol=false;
+			try
+				{
+				for(int i=0;i<3;++i)
+					posValues[i]=&elem.getAtomicPropertyValue(elem.findProperty(posNames[i]));
+				havePos=true;
+				for(int i=0;i<3;++i)
+					colValues[i]=&elem.getAtomicPropertyValue(elem.findProperty(plyColorNames[i]));
+				haveCol=true;
+				}
+			catch(const std::runtime_error&)
+				{
+				}
+			
+			if(havePos)
+				{
+				/* Read all element values: */
+				PointAccumulator::Color c(255.0f,255.0f,255.0f);
+				while(!ply.eoe())
+					{
+					ply.read();
+					
+					/* Extract vertex coordinates: */
+					PointAccumulator::Point p;
+					for(int i=0;i<3;++i)
+						p[i]=posValues[i]->getDouble();
+					
+					/* Extract vertex color from vertex element if it has color properties: */
+					if(haveCol)
+						for(int i=0;i<3;++i)
+							c[i]=float(colValues[i]->getDouble());
+					
+					/* Store the point: */
+					pa.addPoint(p,c);
+					}
+				}
+			}
+		
+		/* This will work whether we read all values or not: */
+		ply.skipElement();
 		}
 	}
 
@@ -1790,6 +1860,7 @@ int main(int argc,char* argv[])
 			/* Reset the point accumulator's spatial and color extents: */
 			pa.resetExtents();
 			
+			Misc::Timer loadTimer;
 			switch(thisPointFileType)
 				{
 				case TIFFDEM:
@@ -1798,7 +1869,6 @@ int main(int argc,char* argv[])
 					TIFFDEMLoader tiff(pa,argv[i],tiffImageIndex);
 					tiff.collectPoints();
 					havePoints=true;
-					std::cout<<" done."<<std::endl;
 					break;
 					}
 				
@@ -1806,124 +1876,111 @@ int main(int argc,char* argv[])
 					std::cout<<"Processing XYZ BIL input file "<<argv[i]<<"..."<<std::flush;
 					loadXYZBILImage(pa,argv[i]);
 					havePoints=true;
-					std::cout<<" done."<<std::endl;
 					break;
 				
 				case BIN:
 					std::cout<<"Processing binary input file "<<argv[i]<<"..."<<std::flush;
 					loadPointFileBin(pa,argv[i]);
 					havePoints=true;
-					std::cout<<" done."<<std::endl;
 					break;
 				
 				case BINRGB:
 					std::cout<<"Processing RGB binary input file "<<argv[i]<<"..."<<std::flush;
 					loadPointFileBinRgb(pa,argv[i]);
 					havePoints=true;
-					std::cout<<" done."<<std::endl;
 					break;
 				
 				case PLY:
+					{
 					std::cout<<"Processing PLY input file "<<argv[i]<<"..."<<std::flush;
-					readPlyFile(pa,argv[i],plyColorNames);
+					loadPointFilePly(pa,argv[i],plyColorNames);
 					havePoints=true;
-					std::cout<<" done."<<std::endl;
 					break;
+					}
 				
 				case LAS:
 					std::cout<<"Processing binary input file "<<argv[i]<<"..."<<std::flush;
 					loadPointFileLas(pa,argv[i],lasClassMask);
 					havePoints=true;
-					std::cout<<" done."<<std::endl;
 					break;
 				
 				case XYZI:
 					std::cout<<"Processing XYZI input file "<<argv[i]<<"..."<<std::flush;
 					loadPointFileXyzi(pa,argv[i]);
 					havePoints=true;
-					std::cout<<" done."<<std::endl;
 					break;
 				
 				case XYZRGB:
 					std::cout<<"Processing XYZRGB input file "<<argv[i]<<"..."<<std::flush;
 					loadPointFileXyzrgb(pa,argv[i]);
 					havePoints=true;
-					std::cout<<" done."<<std::endl;
 					break;
 				
 				case ASCII:
 					std::cout<<"Processing generic ASCII input file "<<argv[i]<<"..."<<std::flush;
 					loadPointFileGenericASCII(pa,argv[i],numHeaderLines,false,false,asciiColumnIndices);
 					havePoints=true;
-					std::cout<<" done."<<std::endl;
 					break;
 				
 				case ASCIIRGB:
 					std::cout<<"Processing generic RGB ASCII input file "<<argv[i]<<"..."<<std::flush;
 					loadPointFileGenericASCII(pa,argv[i],numHeaderLines,false,true,asciiColumnIndices);
 					havePoints=true;
-					std::cout<<" done."<<std::endl;
 					break;
 				
 				case CSV:
 					std::cout<<"Processing generic CSV input file "<<argv[i]<<"..."<<std::flush;
 					loadPointFileGenericASCII(pa,argv[i],numHeaderLines,true,false,asciiColumnIndices);
 					havePoints=true;
-					std::cout<<" done."<<std::endl;
 					break;
 				
 				case CSVRGB:
 					std::cout<<"Processing generic RGB CSV input file "<<argv[i]<<"..."<<std::flush;
 					loadPointFileGenericASCII(pa,argv[i],numHeaderLines,true,true,asciiColumnIndices);
 					havePoints=true;
-					std::cout<<" done."<<std::endl;
 					break;
 				
 				case BLOCKEDASCII:
 					std::cout<<"Processing blocked ASCII input file "<<argv[i]<<"..."<<std::flush;
 					loadPointFileBlockedASCII(pa,argv[i],numHeaderLines,false,asciiColumnIndices);
 					havePoints=true;
-					std::cout<<" done."<<std::endl;
 					break;
 				
 				case BLOCKEDASCIIRGB:
 					std::cout<<"Processing blocked RGB ASCII input file "<<argv[i]<<"..."<<std::flush;
 					loadPointFileBlockedASCII(pa,argv[i],numHeaderLines,true,asciiColumnIndices);
 					havePoints=true;
-					std::cout<<" done."<<std::endl;
 					break;
 				
 				case IDL:
 					std::cout<<"Processing redshift IDL input file "<<argv[i]<<"..."<<std::flush;
 					loadPointFileIdl(pa,argv[i]);
 					havePoints=true;
-					std::cout<<" done."<<std::endl;
 					break;
 				
 				case X3PFORMAT:
 					std::cout<<"Processing X3P input file "<<argv[i]<<"..."<<std::flush;
 					loadPointFileX3P(pa,argv[i]);
 					havePoints=true;
-					std::cout<<" done."<<std::endl;
 					break;
 				
 				case OCTREE:
 					std::cout<<"Processing LiDAR octree input file "<<argv[i]<<"..."<<std::flush;
 					loadPointFileOctree(pa,argv[i]);
 					havePoints=true;
-					std::cout<<" done."<<std::endl;
 					break;
 				
 				case LIDAR:
 					std::cout<<"Processing LiDAR input file "<<argv[i]<<"..."<<std::flush;
 					loadLidarFile(pa,argv[i]);
 					havePoints=true;
-					std::cout<<" done."<<std::endl;
 					break;
 				
 				default:
 					std::cerr<<"Input file "<<argv[i]<<" has an unrecognized file format"<<std::endl;
 				}
+			loadTimer.elapse();
+			std::cout<<" done in "<<loadTimer.getTime()<<'s'<<std::endl;
 			
 			/* Print the spatial and color extents of the just-read input file: */
 			pa.printExtents();

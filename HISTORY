@@ -232,3 +232,6 @@ LiDAR Viewer 3.0:
   reflect new PointShader capabilities,
 - Fixed X3P file input filter in LidarPreprocesor to use axis scalings
   for absolute axes.
+- Replaced PLY file importer in ReadPlyFile.h/.cpp with new PlyFile
+  class because old reader choked on an otherwise correct input file,
+  and was ugly to boot. PlyFile class could be moved into Vrui.

@@ -184,7 +184,7 @@ LIDARPREPROCESSOR_SOURCES = SplitPoints.cpp \
                             PointAccumulator.cpp \
                             LidarProcessOctree.cpp \
                             LidarOctreeCreator.cpp \
-                            ReadPlyFile.cpp \
+                            PlyFile.cpp \
                             LidarPreprocessor.cpp
 
 $(LIDARPREPROCESSOR_SOURCES:%.cpp=$(OBJDIR)/%.o): | $(DEPDIR)/config
