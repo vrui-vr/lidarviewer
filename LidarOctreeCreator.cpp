@@ -1,7 +1,7 @@
 /***********************************************************************
 LidarOctreeCreator - Class to create LiDAR octrees from point clouds
 using an out-of-core algorithm.
-Copyright (c) 2007-2025 Oliver Kreylos
+Copyright (c) 2007-2026 Oliver Kreylos
 
 This file is part of the LiDAR processing and analysis package.
 
@@ -570,11 +570,11 @@ void LidarOctreeCreator::writePointsFileLevel(const LidarOctreeCreator::Node& no
 	if(level==0)
 		{
 		/* Check if the node's point data offset matches the current point file write position: */
-		if(pointsFile.getWritePos()!=sizeof(LidarDataFileHeader)+node.octreeDataOffset*sizeof(LidarPoint))
+		if(pointsFile.getWritePos()!=LidarFile::Offset(sizeof(LidarDataFileHeader)+node.octreeDataOffset*sizeof(LidarPoint)))
 			throw Misc::makeStdErr(__PRETTY_FUNCTION__,"Wrong point data offset in octree node");
 		
 		/* Calculate the starting offset of the node's point array in units of LiDAR points: */
-		size_t nodeStart=node.pointsOffset/sizeof(LidarPoint);
+		TempFile::Offset nodeStart(node.pointsOffset/sizeof(LidarPoint));
 		
 		/* Check if the node's point array is outside the double buffer: */
 		if(nodeStart+node.numPoints>pointBufferStarts[2])
@@ -584,7 +584,7 @@ void LidarOctreeCreator::writePointsFileLevel(const LidarOctreeCreator::Node& no
 		if(nodeStart<pointBufferStarts[1])
 			{
 			/* Copy points from the first buffer half: */
-			size_t numPoints=pointBufferStarts[1]-nodeStart;
+			TempFile::Offset numPoints=pointBufferStarts[1]-nodeStart;
 			if(numPoints>node.numPoints)
 				numPoints=node.numPoints;
 			const LidarPoint* pointData=pointBuffers[0]+(nodeStart-pointBufferStarts[0]);
@@ -596,7 +596,7 @@ void LidarOctreeCreator::writePointsFileLevel(const LidarOctreeCreator::Node& no
 		if(nodeStart+node.numPoints>pointBufferStarts[1])
 			{
 			/* Copy points from the second buffer half: */
-			size_t numPoints=nodeStart+node.numPoints-pointBufferStarts[1];
+			TempFile::Offset numPoints=nodeStart+node.numPoints-pointBufferStarts[1];
 			if(numPoints>node.numPoints)
 				numPoints=node.numPoints;
 			const LidarPoint* pointData=pointBuffers[1]+(nodeStart+node.numPoints-pointBufferStarts[1]-numPoints);

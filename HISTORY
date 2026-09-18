@@ -235,3 +235,4 @@ LiDAR Viewer 3.0:
 - Replaced PLY file importer in ReadPlyFile.h/.cpp with new PlyFile
   class because old reader choked on an otherwise correct input file,
   and was ugly to boot. PlyFile class could be moved into Vrui.
+- Minor type fixes in LidarOctreeCreator to get rid of warnings.
