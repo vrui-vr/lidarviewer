@@ -236,3 +236,4 @@ LiDAR Viewer 3.0:
   class because old reader choked on an otherwise correct input file,
   and was ugly to boot. PlyFile class could be moved into Vrui.
 - Minor type fixes in LidarOctreeCreator to get rid of warnings.
+- Replaced Threads::Atomic with std::atomic wherever.

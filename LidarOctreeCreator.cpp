@@ -378,7 +378,7 @@ void* LidarOctreeCreator::subsampleThreadMethod(void)
 		subsample(*node);
 		
 		/* Update the parent node's ready counter: */
-		if(node->parent!=0&&node->parent->numChildrenDone.preAdd(1)==8)
+		if(node->parent!=0&&node->parent->numChildrenDone.fetch_add(1)==7)
 			{
 			/* Subsample the parent node right away: */
 			node=node->parent;
@@ -450,7 +450,7 @@ void LidarOctreeCreator::createSubTree(LidarOctreeCreator::Node& node,const Cube
 	else
 		{
 		/* This node is empty; update the parent node's ready counter: */
-		if(node.parent!=0&&node.parent->numChildrenDone.preAdd(1)==8)
+		if(node.parent!=0&&node.parent->numChildrenDone.fetch_add(1)==7)
 			{
 			/* Subsample the parent node: */
 			subsampleQueue.push(node.parent);
@@ -470,7 +470,7 @@ void LidarOctreeCreator::createSubTreeWithPoints(LidarOctreeCreator::Node& node,
 			maxNumPointsPerInteriorNode=node.numPoints;
 		
 		/* Update the parent node's ready counter: */
-		if(node.parent!=0&&node.parent->numChildrenDone.preAdd(1)==8)
+		if(node.parent!=0&&node.parent->numChildrenDone.fetch_add(1)==7)
 			{
 			/* Subsample the parent node: */
 			subsampleQueue.push(node.parent);

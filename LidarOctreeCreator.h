@@ -1,7 +1,7 @@
 /***********************************************************************
 LidarOctreeCreator - Class to create LiDAR octrees from point clouds
 using an out-of-core algorithm.
-Copyright (c) 2007-2013 Oliver Kreylos
+Copyright (c) 2007-2026 Oliver Kreylos
 
 This file is part of the LiDAR processing and analysis package.
 
@@ -24,11 +24,11 @@ Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #ifndef LIDAROCTREECREATOR_INCLUDED
 #define LIDAROCTREECREATOR_INCLUDED
 
+#include <atomic>
 #include <vector>
 #include <string>
 #include <Threads/Mutex.h>
 #include <Threads/MutexCond.h>
-#include <Threads/Atomic.h>
 #include <Threads/Thread.h>
 #include <Threads/Queue.h>
 #include <IO/StandardFile.h>
@@ -57,7 +57,7 @@ class LidarOctreeCreator
 		unsigned int level; // Tree level containing this node (root is at level 0)
 		Scalar detailSize; // Detail size of this node (distance between nearest neighbors)
 		unsigned int numPoints; // Number of points belonging to this node
-		Threads::Atomic<unsigned char> numChildrenDone; // Counts the number of children of this node whose point sets have been created
+		std::atomic<unsigned char> numChildrenDone; // Counts the number of children of this node whose point sets have been created
 		bool pointsPrivate; // Flag whether this node owns the point array
 		union
 			{
